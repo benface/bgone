@@ -57,7 +57,7 @@ fn compare_with_original(processed: &DynamicImage, original: &DynamicImage) -> (
 // Black background tests
 
 #[test]
-fn test_fire_on_black_fully_auto() {
+fn test_fire_on_black_non_strict() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
 
@@ -72,7 +72,7 @@ fn test_fire_on_black_fully_auto() {
     let composited_path = temp_dir.path().join("fire_on_black.png");
     fire_on_black.save(&composited_path).unwrap();
 
-    // Run bgone without specifying foreground colors (fully auto)
+    // Run bgone in non-strict mode without specifying foreground colors
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
@@ -93,17 +93,17 @@ fn test_fire_on_black_fully_auto() {
     let reconstructed = overlay_on_background(&processed, black_bg);
     save_test_images(
         "translucent_recovery",
-        "black_fully_auto",
+        "black_non_strict",
         &processed,
         &reconstructed,
     );
 
     println!(
-        "Fire on black (fully auto) - Similarity: {:.2}%, PSNR: {:.2} dB",
+        "Fire on black (non-strict) - Similarity: {:.2}%, PSNR: {:.2} dB",
         similarity, psnr
     );
 
-    // We expect good recovery in fully auto mode
+    // We expect good recovery in non-strict mode
     assert!(
         similarity > 95.0,
         "Similarity {:.2}% is too low",
@@ -212,10 +212,65 @@ fn test_fire_on_black_strict_single_auto() {
     );
 }
 
+#[test]
+fn test_fire_on_black_strict_mixed() {
+    ensure_output_dir();
+    let temp_dir = TempDir::new().unwrap();
+
+    let original_fire = load_fire_image();
+    let black_bg = [0, 0, 0];
+    let fire_on_black = create_composited_image(&original_fire, black_bg);
+
+    let composited_path = temp_dir.path().join("fire_on_black.png");
+    fire_on_black.save(&composited_path).unwrap();
+
+    // Run bgone in strict mode with white + 2 auto colors
+    let output_path = temp_dir.path().join("output.png");
+    Command::cargo_bin("bgone")
+        .unwrap()
+        .args(&[
+            composited_path.to_str().unwrap(),
+            output_path.to_str().unwrap(),
+            "--strict",
+            "--fg",
+            "fff",
+            "--fg",
+            "auto",
+            "--fg",
+            "auto",
+            "--bg",
+            "000000",
+        ])
+        .assert()
+        .success();
+
+    let processed = image::open(&output_path).unwrap();
+    let (similarity, psnr) = compare_with_original(&processed, &original_fire);
+
+    let reconstructed = overlay_on_background(&processed, black_bg);
+    save_test_images(
+        "translucent_recovery",
+        "black_strict_mixed",
+        &processed,
+        &reconstructed,
+    );
+
+    println!(
+        "Fire on black (strict, white + 2 auto) - Similarity: {:.2}%, PSNR: {:.2} dB",
+        similarity, psnr
+    );
+    // With white + 2 auto colors, we expect excellent similarity
+    assert!(
+        similarity > 95.0,
+        "Similarity {:.2}% is too low",
+        similarity
+    );
+}
+
 // White background tests
 
 #[test]
-fn test_fire_on_white_fully_auto() {
+fn test_fire_on_white_non_strict() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
 
@@ -244,13 +299,13 @@ fn test_fire_on_white_fully_auto() {
     let reconstructed = overlay_on_background(&processed, white_bg);
     save_test_images(
         "translucent_recovery",
-        "white_fully_auto",
+        "white_non_strict",
         &processed,
         &reconstructed,
     );
 
     println!(
-        "Fire on white (fully auto) - Similarity: {:.2}%, PSNR: {:.2} dB",
+        "Fire on white (non-strict) - Similarity: {:.2}%, PSNR: {:.2} dB",
         similarity, psnr
     );
     assert!(
@@ -301,11 +356,9 @@ fn test_fire_on_white_non_strict_single_auto() {
         "Fire on white (non-strict, single auto) - Similarity: {:.2}%, PSNR: {:.2} dB",
         similarity, psnr
     );
-    // With non-strict mode and only one auto color, we expect moderate similarity
-    // Better than strict mode but still limited by single color constraint
     assert!(
         similarity > 65.0 && similarity < 85.0,
-        "Similarity {:.2}% is out of expected range (65-85%) for single-color non-strict mode",
+        "Similarity {:.2}% is out of expected range (65-85%)",
         similarity
     );
 }
@@ -361,10 +414,66 @@ fn test_fire_on_white_strict_single_auto() {
     );
 }
 
+#[test]
+fn test_fire_on_white_strict_mixed() {
+    ensure_output_dir();
+    let temp_dir = TempDir::new().unwrap();
+
+    let original_fire = load_fire_image();
+    let white_bg = [255, 255, 255];
+    let fire_on_white = create_composited_image(&original_fire, white_bg);
+
+    let composited_path = temp_dir.path().join("fire_on_white.png");
+    fire_on_white.save(&composited_path).unwrap();
+
+    // Run bgone in strict mode with black + 2 auto colors
+    let output_path = temp_dir.path().join("output.png");
+    Command::cargo_bin("bgone")
+        .unwrap()
+        .args(&[
+            composited_path.to_str().unwrap(),
+            output_path.to_str().unwrap(),
+            "--strict",
+            "--fg",
+            "000",
+            "--fg",
+            "auto",
+            "--fg",
+            "auto",
+            "--bg",
+            "ffffff",
+        ])
+        .assert()
+        .success();
+
+    let processed = image::open(&output_path).unwrap();
+    let (similarity, psnr) = compare_with_original(&processed, &original_fire);
+
+    let reconstructed = overlay_on_background(&processed, white_bg);
+    save_test_images(
+        "translucent_recovery",
+        "white_strict_mixed",
+        &processed,
+        &reconstructed,
+    );
+
+    println!(
+        "Fire on white (strict, black + 2 auto) - Similarity: {:.2}%, PSNR: {:.2} dB",
+        similarity, psnr
+    );
+    // With black + 2 auto colors, we expect good similarity
+    // Slightly lower than black background due to color contrast
+    assert!(
+        similarity > 85.0,
+        "Similarity {:.2}% is too low",
+        similarity
+    );
+}
+
 // Colored background tests
 
 #[test]
-fn test_fire_on_colored_fully_auto() {
+fn test_fire_on_colored_non_strict() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
 
@@ -393,13 +502,13 @@ fn test_fire_on_colored_fully_auto() {
     let reconstructed = overlay_on_background(&processed, colored_bg);
     save_test_images(
         "translucent_recovery",
-        "colored_fully_auto",
+        "colored_non_strict",
         &processed,
         &reconstructed,
     );
 
     println!(
-        "Fire on colored (fully auto) - Similarity: {:.2}%, PSNR: {:.2} dB",
+        "Fire on colored (non-strict) - Similarity: {:.2}%, PSNR: {:.2} dB",
         similarity, psnr
     );
     assert!(
@@ -450,11 +559,9 @@ fn test_fire_on_colored_non_strict_single_auto() {
         "Fire on colored (non-strict, single auto) - Similarity: {:.2}%, PSNR: {:.2} dB",
         similarity, psnr
     );
-    // With non-strict mode and only one auto color, we expect moderate similarity
-    // Better than strict mode but still limited by single color constraint
     assert!(
         similarity > 65.0 && similarity < 85.0,
-        "Similarity {:.2}% is out of expected range (65-85%) for single-color non-strict mode",
+        "Similarity {:.2}% is out of expected range (65-85%)",
         similarity
     );
 }
@@ -506,6 +613,61 @@ fn test_fire_on_colored_strict_single_auto() {
     assert!(
         similarity < 60.0,
         "Similarity {:.2}% is too high for single-color strict mode (expected poor recovery)",
+        similarity
+    );
+}
+
+#[test]
+fn test_fire_on_colored_strict_mixed() {
+    ensure_output_dir();
+    let temp_dir = TempDir::new().unwrap();
+
+    let original_fire = load_fire_image();
+    let colored_bg = [100, 150, 200];
+    let fire_on_colored = create_composited_image(&original_fire, colored_bg);
+
+    let composited_path = temp_dir.path().join("fire_on_colored.png");
+    fire_on_colored.save(&composited_path).unwrap();
+
+    // Run bgone in strict mode with black + 2 auto colors
+    let output_path = temp_dir.path().join("output.png");
+    Command::cargo_bin("bgone")
+        .unwrap()
+        .args(&[
+            composited_path.to_str().unwrap(),
+            output_path.to_str().unwrap(),
+            "--strict",
+            "--fg",
+            "000",
+            "--fg",
+            "auto",
+            "--fg",
+            "auto",
+            "--bg",
+            "6496c8",
+        ])
+        .assert()
+        .success();
+
+    let processed = image::open(&output_path).unwrap();
+    let (similarity, psnr) = compare_with_original(&processed, &original_fire);
+
+    let reconstructed = overlay_on_background(&processed, colored_bg);
+    save_test_images(
+        "translucent_recovery",
+        "colored_strict_mixed",
+        &processed,
+        &reconstructed,
+    );
+
+    println!(
+        "Fire on colored (strict, black + 2 auto) - Similarity: {:.2}%, PSNR: {:.2} dB",
+        similarity, psnr
+    );
+    // With black + 2 auto colors, we expect good similarity
+    assert!(
+        similarity > 85.0,
+        "Similarity {:.2}% is too low",
         similarity
     );
 }

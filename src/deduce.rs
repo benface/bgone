@@ -5,6 +5,11 @@ use image::DynamicImage;
 use indicatif::{ProgressBar, ProgressStyle};
 use std::collections::HashMap;
 
+// Constants for color deduction algorithm
+const MAX_CANDIDATES_2_UNKNOWNS: usize = 30; // Max candidates for exhaustive 2-unknown search
+const MAX_CANDIDATES_3_UNKNOWNS_ALL: usize = 25; // Max candidates for full 3-unknown search
+const MAX_CANDIDATES_3_UNKNOWNS_SELECTED: usize = 20; // Selected candidates for large 3-unknown search
+
 /// Calculate Euclidean distance between two colors in RGB space
 fn color_distance(c1: NormalizedColor, c2: NormalizedColor) -> f64 {
     (0..3).map(|i| (c1[i] - c2[i]).powi(2)).sum::<f64>().sqrt()
@@ -102,42 +107,37 @@ fn find_candidate_foreground_colors(
     }
 }
 
-/// Select N most different colors from a set
+/// Select N most different colors from a set, prioritizing pure/standard colors
 fn select_most_different_colors(colors: &[Color], n: usize) -> Vec<Color> {
     if colors.len() <= n {
         return colors.to_vec();
     }
 
-    let mut selected = Vec::new();
+    let mut selected: Vec<Color> = Vec::new();
 
-    // Start with a color (pick one with high saturation if possible)
-    let first = colors
-        .iter()
-        .max_by_key(|&&[r, g, b]| {
-            let max = r.max(g).max(b) as i32;
-            let min = r.min(g).min(b) as i32;
-            max - min // Saturation
-        })
-        .copied()
-        .unwrap_or(colors[0]);
-
-    selected.push(first);
-
-    // Greedily select colors that are maximally different
     while selected.len() < n {
         let next = colors
             .iter()
-            .filter(|c| !selected.contains(c))
+            .filter(|&&c| !selected.contains(&c))
             .max_by_key(|&&color| {
-                let min_dist = selected
-                    .iter()
-                    .map(|&s| {
-                        let dist = color_distance(normalize_color(color), normalize_color(s));
-                        (dist * 1000.0) as i32
-                    })
-                    .min()
-                    .unwrap_or(i32::MAX);
-                min_dist
+                if selected.is_empty() {
+                    // If no colors selected yet, pick the most saturated
+                    let [r, g, b] = color;
+                    let max = r.max(g).max(b) as i32;
+                    let min = r.min(g).min(b) as i32;
+                    max - min // Saturation
+                } else {
+                    // Otherwise pick the one most different from selected colors
+                    let min_dist = selected
+                        .iter()
+                        .map(|s| {
+                            let dist = color_distance(normalize_color(color), normalize_color(*s));
+                            (dist * 1000.0) as i32
+                        })
+                        .min()
+                        .unwrap_or(i32::MAX);
+                    min_dist
+                }
             });
 
         if let Some(&color) = next {
@@ -184,7 +184,29 @@ fn evaluate_color_set(
         total_weight += weight;
     }
 
-    total_error / total_weight
+    let reconstruction_error = total_error / total_weight;
+
+    // Tie-breaker: Add a very small penalty for colors close to the background.
+    // This helps prefer colors that are visually distinct from the background
+    // when multiple color sets achieve nearly identical reconstruction quality.
+    //
+    // The penalty is designed to be insignificant compared to reconstruction error
+    // (max 0.00001 per color), ensuring it only affects the choice when reconstruction
+    // quality is essentially equal between candidates.
+    let mut color_quality_penalty = 0.0;
+    for fg_color in foreground_colors {
+        let distance_to_bg = color_distance(*fg_color, background);
+        // Maximum possible distance in normalized RGB space is sqrt(3) ≈ 1.732
+        // (when colors are at opposite corners of the RGB cube)
+        const MAX_RGB_DISTANCE: f64 = 1.732;
+        let normalized_distance = distance_to_bg / MAX_RGB_DISTANCE;
+        // Penalty decreases linearly with distance from background
+        const MAX_PENALTY_PER_COLOR: f64 = 0.00001;
+        color_quality_penalty += (1.0 - normalized_distance) * MAX_PENALTY_PER_COLOR;
+    }
+    color_quality_penalty /= foreground_colors.len() as f64;
+
+    reconstruction_error + color_quality_penalty
 }
 
 /// Deduce unknown foreground colors from an image
@@ -262,20 +284,26 @@ pub fn deduce_unknown_colors(
 
     // If we don't have enough candidates, add some standard colors
     let mut all_candidates = candidates;
-    if all_candidates.len() < unknown_count {
-        let standard_colors = vec![
-            [255, 0, 0],   // Red
-            [0, 255, 0],   // Green
-            [0, 0, 255],   // Blue
-            [255, 255, 0], // Yellow
-            [255, 0, 255], // Magenta
-            [0, 255, 255], // Cyan
-            [255, 128, 0], // Orange
-            [128, 0, 255], // Purple
-        ];
 
-        for color in standard_colors {
-            if !known_colors.contains(&color) && color != background_color {
+    // Always add standard pure colors as they are often the best choice
+    let standard_colors = vec![
+        [255, 0, 0],   // Red
+        [0, 255, 0],   // Green
+        [0, 0, 255],   // Blue
+        [255, 255, 0], // Yellow
+        [255, 0, 255], // Magenta
+        [0, 255, 255], // Cyan
+        [255, 128, 0], // Orange
+        [128, 0, 255], // Purple
+    ];
+
+    for color in standard_colors {
+        if !known_colors.contains(&color) && color != background_color {
+            // Add if not already in candidates
+            if !all_candidates
+                .iter()
+                .any(|&c| color_distance(normalize_color(c), normalize_color(color)) < 0.01)
+            {
                 all_candidates.push(color);
             }
         }
@@ -313,7 +341,7 @@ pub fn deduce_unknown_colors(
                 best_colors = vec![*candidate];
             }
         }
-    } else if unknown_count == 2 && all_candidates.len() <= 20 {
+    } else if unknown_count == 2 && all_candidates.len() <= MAX_CANDIDATES_2_UNKNOWNS {
         for (i, c1) in all_candidates.iter().enumerate() {
             for c2 in all_candidates.iter().skip(i + 1) {
                 let mut test_fg = vec![[0.0; 3]; specs.len()];
@@ -341,8 +369,49 @@ pub fn deduce_unknown_colors(
                 }
             }
         }
+    } else if unknown_count == 3 {
+        // For 3 unknowns, determine how many candidates to test based on total count
+        let candidates_to_try = if all_candidates.len() <= MAX_CANDIDATES_3_UNKNOWNS_ALL {
+            // Small set: test all combinations (25 choose 3 = 2300 combinations)
+            all_candidates.clone()
+        } else {
+            // Large set: select the most different candidates to keep computation reasonable
+            // (20 choose 3 = 1140 combinations)
+            select_most_different_colors(&all_candidates, MAX_CANDIDATES_3_UNKNOWNS_SELECTED)
+        };
+
+        // Exhaustive search through all 3-color combinations
+        for (i, c1) in candidates_to_try.iter().enumerate() {
+            for (j, c2) in candidates_to_try.iter().enumerate().skip(i + 1) {
+                for c3 in candidates_to_try.iter().skip(j + 1) {
+                    let mut test_fg = vec![[0.0; 3]; specs.len()];
+                    let mut known_idx = 0;
+                    let test_unknown = [*c1, *c2, *c3];
+                    let mut unknown_idx = 0;
+
+                    for (i, spec) in specs.iter().enumerate() {
+                        match spec {
+                            ForegroundColorSpec::Known(_) => {
+                                test_fg[i] = known_norm[known_idx];
+                                known_idx += 1;
+                            }
+                            ForegroundColorSpec::Unknown => {
+                                test_fg[i] = normalize_color(test_unknown[unknown_idx]);
+                                unknown_idx += 1;
+                            }
+                        }
+                    }
+
+                    let error = evaluate_color_set(&test_fg, &pixels, background_norm);
+                    if error < best_error {
+                        best_error = error;
+                        best_colors = test_unknown.to_vec();
+                    }
+                }
+            }
+        }
     } else {
-        // For more unknowns, use the most different candidates
+        // For 4+ unknowns, use the most different candidates
         best_colors = select_most_different_colors(&all_candidates, unknown_count);
     }
 

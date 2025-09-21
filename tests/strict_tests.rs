@@ -53,11 +53,7 @@ fn test_square_removal() {
         "Similarity {:.4}% is too low",
         similarity
     );
-    assert!(
-        psnr > 50.0,
-        "PSNR {:.2} dB is too low (expected > 50)",
-        psnr
-    );
+    assert!(psnr > 50.0, "PSNR {:.2} dB is too low", psnr);
 }
 
 #[test]
@@ -105,11 +101,7 @@ fn test_circle_gradient_removal() {
         "Similarity {:.4}% is too low",
         similarity
     );
-    assert!(
-        psnr > 50.0,
-        "PSNR {:.2} dB is too low (expected > 50)",
-        psnr
-    );
+    assert!(psnr > 50.0, "PSNR {:.2} dB is too low", psnr);
 }
 
 #[test]
@@ -159,11 +151,7 @@ fn test_rectangles_removal() {
         "Similarity {:.2}% is too low",
         similarity
     );
-    assert!(
-        psnr > 50.0,
-        "PSNR {:.2} dB is too low (expected > 50)",
-        psnr
-    );
+    assert!(psnr > 50.0, "PSNR {:.2} dB is too low", psnr);
 }
 
 #[test]

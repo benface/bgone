@@ -218,22 +218,35 @@ fn test_multiple_unknown_colors_convergence() {
         "Should have deduced exactly 3 colors"
     );
 
-    // Verify the colors are not all black/dark
-    let mut non_black_count = 0;
+    // Parse the deduced colors
+    let mut parsed_colors = Vec::new();
     for color in &deduced_colors {
         if color.starts_with("#") && color.len() == 7 {
             let r = u8::from_str_radix(&color[1..3], 16).unwrap();
             let g = u8::from_str_radix(&color[3..5], 16).unwrap();
             let b = u8::from_str_radix(&color[5..7], 16).unwrap();
-            if r > 50 || g > 50 || b > 50 {
-                non_black_count += 1;
-            }
+            parsed_colors.push((r, g, b));
         }
     }
 
+    // Check that we have valid colors
+    assert_eq!(parsed_colors.len(), 3, "All colors should be valid");
+
+    // The optimal colors should be pure red, green, and blue (furthest from white background)
+    let has_pure_red = parsed_colors
+        .iter()
+        .any(|&(r, g, b)| r == 255 && g == 0 && b == 0);
+    let has_pure_green = parsed_colors
+        .iter()
+        .any(|&(r, g, b)| r == 0 && g == 255 && b == 0);
+    let has_pure_blue = parsed_colors
+        .iter()
+        .any(|&(r, g, b)| r == 0 && g == 0 && b == 255);
+
+    // The algorithm should now find the optimal pure colors
     assert!(
-        non_black_count >= 2,
-        "At least 2 colors should be non-black, got: {:?}",
+        has_pure_red && has_pure_green && has_pure_blue,
+        "Expected pure colors #ff0000, #00ff00, #0000ff but got {:?}",
         deduced_colors
     );
 
@@ -252,6 +265,91 @@ fn test_multiple_unknown_colors_convergence() {
     // Also check reconstruction quality
     let similarity = calculate_similarity_percentage(&original, &reconstructed);
     println!("Three gradients deduction - Similarity: {:.2}%", similarity);
+}
+
+#[test]
+fn test_auto_deduction_finds_optimal_colors() {
+    ensure_output_dir();
+    let temp_dir = TempDir::new().unwrap();
+    let output_path = temp_dir.path().join("output.png");
+
+    // This test checks that auto deduction finds the most saturated colors
+    // (furthest from the background), not just any valid colors
+    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    cmd.args(&[
+        "tests/inputs/circle-gradients.png",
+        output_path.to_str().unwrap(),
+        "--strict",
+        "--fg",
+        "auto",
+        "auto",
+        "auto",
+        "--bg",
+        "#ffffff",
+    ]);
+
+    let output = cmd
+        .assert()
+        .success()
+        .stdout(predicates::str::contains("Deduced 3 unknown colors"))
+        .get_output()
+        .clone();
+
+    let output_str = String::from_utf8_lossy(&output.stdout);
+
+    // Extract deduced colors
+    let mut deduced_colors: Vec<String> = Vec::new();
+    for line in output_str.lines() {
+        if line.contains("Deduced unknown color") {
+            if let Some(color_part) = line.split(':').nth(1) {
+                let colors: Vec<String> = color_part
+                    .trim()
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect();
+                deduced_colors.extend(colors);
+            }
+        } else if line.contains("Deduced 3 unknown colors:") {
+            if let Some(color_part) = line.split(':').nth(1) {
+                deduced_colors = color_part
+                    .trim()
+                    .split_whitespace()
+                    .map(|s| s.to_string())
+                    .collect();
+                break;
+            }
+        }
+    }
+
+    println!("Deduced colors: {:?}", deduced_colors);
+
+    // Parse colors
+    let mut parsed_colors = Vec::new();
+    for color in &deduced_colors {
+        if color.starts_with("#") && color.len() == 7 {
+            let r = u8::from_str_radix(&color[1..3], 16).unwrap();
+            let g = u8::from_str_radix(&color[3..5], 16).unwrap();
+            let b = u8::from_str_radix(&color[5..7], 16).unwrap();
+            parsed_colors.push((r, g, b));
+        }
+    }
+
+    // The optimal colors for white background should be pure RGB
+    let has_pure_red = parsed_colors
+        .iter()
+        .any(|&(r, g, b)| r == 255 && g == 0 && b == 0);
+    let has_pure_green = parsed_colors
+        .iter()
+        .any(|&(r, g, b)| r == 0 && g == 255 && b == 0);
+    let has_pure_blue = parsed_colors
+        .iter()
+        .any(|&(r, g, b)| r == 0 && g == 0 && b == 255);
+
+    assert!(
+        has_pure_red && has_pure_green && has_pure_blue,
+        "Expected pure colors #ff0000, #00ff00, #0000ff but got {:?}",
+        deduced_colors
+    );
 }
 
 #[test]
@@ -587,7 +685,7 @@ fn test_square_gradient_auto_deduction() {
         similarity
     );
 
-    // May have lower similarity due to opacity optimization
+    // Should have good reconstruction quality
     assert!(
         similarity > 98.0,
         "Reconstruction quality too low: {:.2}%",

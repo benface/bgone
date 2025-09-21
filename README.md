@@ -150,10 +150,6 @@ cargo build --release
 You can test the tool without installing it using `cargo run`:
 
 ```bash
-# Debug mode (faster compilation, slower execution)
-cargo run -- input.png output.png --fg ff0000
-
-# Release mode (slower compilation, much faster execution)
 cargo run --release -- input.png output.png --fg ff0000
 ```
 
@@ -171,15 +167,17 @@ The project includes a comprehensive testing framework that validates the color 
 
 ```bash
 # Run all tests
-cargo test -- --nocapture
-
-# Generate test inputs (only needed once)
-cargo test --test generate_inputs -- --ignored
+cargo test --release -- --nocapture
 
 # Run specific test suites
-cargo test --test strict_tests -- --nocapture
-cargo test --test non_strict_tests -- --nocapture
-cargo test --test color_deduction_tests -- --nocapture
+cargo test --release --test strict_tests -- --nocapture
+cargo test --release --test non_strict_tests -- --nocapture
+cargo test --release --test color_deduction_tests -- --nocapture
+cargo test --release --test square_gradient_stroke_tests -- --nocapture
+cargo test --release --test translucent_recovery_tests -- --nocapture
+
+# Generate test inputs (only needed once)
+cargo test --release --test generate_inputs -- --ignored
 ```
 
 ### Test Results
