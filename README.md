@@ -7,7 +7,7 @@ Ultra-fast CLI tool for removing solid background colors from images using color
 - **Blazing fast** - Written in Rust with parallel processing
 - **Multiple foreground colors** - Handles images with multiple foreground colors mixed with the background
 - **Background color detection** - Automatically detects background color from image edges
-- **Foreground color deduction** - Can automatically find unknown foreground colors using the `auto` keyword
+- **Foreground color deduction** - Can automatically deduce unknown foreground colors using the `auto` keyword
 - **Flexible modes** - Strict mode for exact color matching, or non-strict mode for more natural transparency
 - **Opacity optimization** - Intelligently optimizes opacity based on mode and colors
 - **Precise color unmixing** - Uses least-squares optimization for accurate color separation
@@ -113,7 +113,7 @@ The tool uses a color unmixing algorithm to determine how much of each foregroun
 
 ### Strict Mode
 
-- Requires foreground colors to be specified
+- Requires foreground colors to be specified (can be known colors or `auto`)
 - Restricts unmixing to only the specified colors
 - Optimizes for maximum opacity while maintaining exact color accuracy
 - Best for images with known, specific foreground colors

@@ -72,26 +72,48 @@ pub fn overlay_on_background(foreground: &DynamicImage, background_color: Color)
     DynamicImage::ImageRgba8(result)
 }
 
-/// Calculate the mean squared error between two images
+/// Compare two images using image-compare library's hybrid comparison
 ///
-/// # Arguments
-/// * `img1` - First image to compare
-/// * `img2` - Second image to compare
+/// This uses a combination of SSIM for structure and color difference metrics
+/// Returns a score between 0.0 and 1.0 where 1.0 is identical
+pub fn compare_images(img1: &DynamicImage, img2: &DynamicImage) -> Result<f64, String> {
+    let rgb1 = img1.to_rgb8();
+    let rgb2 = img2.to_rgb8();
+
+    match image_compare::rgb_hybrid_compare(&rgb1, &rgb2) {
+        Ok(result) => Ok(result.score),
+        Err(_) => Err("Images must have same dimensions".to_string()),
+    }
+}
+
+/// Compare two RGBA images directly, accounting for transparency
 ///
-/// # Returns
-/// The mean squared error across all RGB channels (lower is better)
-///
-/// # Panics
-/// Panics if images have different dimensions
-pub fn calculate_mse(img1: &DynamicImage, img2: &DynamicImage) -> f64 {
+/// This is useful for comparing images with alpha channels
+#[allow(dead_code)]
+pub fn compare_rgba_images(img1: &DynamicImage, img2: &DynamicImage) -> Result<f64, String> {
     let rgba1 = img1.to_rgba8();
     let rgba2 = img2.to_rgba8();
 
-    assert_eq!(
-        rgba1.dimensions(),
-        rgba2.dimensions(),
-        "Images must have same dimensions"
-    );
+    match image_compare::rgba_hybrid_compare((&rgba1).into(), (&rgba2).into()) {
+        Ok(result) => Ok(result.score),
+        Err(_) => Err("Images must have same dimensions".to_string()),
+    }
+}
+
+/// Calculate similarity percentage (0-100%) between two images
+/// Uses image-compare's hybrid comparison
+pub fn calculate_similarity_percentage(img1: &DynamicImage, img2: &DynamicImage) -> f64 {
+    match compare_images(img1, img2) {
+        Ok(score) => score * 100.0,
+        Err(_) => 0.0,
+    }
+}
+
+/// Calculate PSNR using RMS comparison
+/// Note: image-compare doesn't provide PSNR directly, so we'll keep a simple version for now
+pub fn calculate_psnr(img1: &DynamicImage, img2: &DynamicImage) -> f64 {
+    let rgba1 = img1.to_rgba8();
+    let rgba2 = img2.to_rgba8();
 
     let mut sum_squared_diff = 0.0;
     let mut pixel_count = 0;
@@ -105,35 +127,12 @@ pub fn calculate_mse(img1: &DynamicImage, img2: &DynamicImage) -> f64 {
         }
     }
 
-    sum_squared_diff / pixel_count as f64
-}
-
-/// Calculate the Peak Signal-to-Noise Ratio (PSNR) in decibels
-/// Higher values mean better quality (typical good values are > 30 dB)
-pub fn calculate_psnr(img1: &DynamicImage, img2: &DynamicImage) -> f64 {
-    let mse = calculate_mse(img1, img2);
-
+    let mse = sum_squared_diff / pixel_count as f64;
     if mse == 0.0 {
         return f64::INFINITY; // Images are identical
     }
 
-    let max_pixel_value = 255.0;
-    20.0 * (max_pixel_value / mse.sqrt()).log10()
-}
-
-/// Calculate similarity percentage (0-100%) between two images
-/// Based on normalized MSE
-///
-/// # Arguments
-/// * `img1` - First image to compare
-/// * `img2` - Second image to compare
-///
-/// # Returns
-/// Similarity percentage where 100% means identical images
-pub fn calculate_similarity_percentage(img1: &DynamicImage, img2: &DynamicImage) -> f64 {
-    let mse = calculate_mse(img1, img2);
-    let normalized_mse = mse / (255.0 * 255.0); // Normalize to 0-1 range
-    (1.0 - normalized_mse) * 100.0
+    20.0 * (255.0 / mse.sqrt()).log10()
 }
 
 #[cfg(test)]

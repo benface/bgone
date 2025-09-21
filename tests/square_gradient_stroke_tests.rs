@@ -7,11 +7,11 @@ use common::{
 };
 use tempfile::TempDir;
 
-/// Test gradient_rect_on_dark_with_stroke.png in all four modes to showcase
+/// Test square-gradient-stroke.png in all four modes to showcase
 /// how different approaches produce different outputs that all perfectly reconstruct
 
 #[test]
-fn test_gradient_stroke_non_strict_no_fg() {
+fn test_square_gradient_stroke_non_strict_no_fg() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -21,7 +21,7 @@ fn test_gradient_stroke_non_strict_no_fg() {
     Command::cargo_bin("bgone")
         .unwrap()
         .args(&[
-            "tests/inputs/gradient_rect_on_dark_with_stroke.png",
+            "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--bg",
             "14191e", // dark background (20, 25, 30)
@@ -30,7 +30,7 @@ fn test_gradient_stroke_non_strict_no_fg() {
         .success();
 
     // Load images
-    let original = image::open("tests/inputs/gradient_rect_on_dark_with_stroke.png").unwrap();
+    let original = image::open("tests/inputs/square-gradient-stroke.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Reconstruct by overlaying on background
@@ -39,7 +39,7 @@ fn test_gradient_stroke_non_strict_no_fg() {
 
     // Save outputs for inspection
     save_test_images(
-        "gradient_stroke_comparison",
+        "square_gradient_stroke",
         "non_strict_no_fg",
         &processed,
         &reconstructed,
@@ -54,14 +54,14 @@ fn test_gradient_stroke_non_strict_no_fg() {
         similarity, psnr
     );
     assert!(
-        similarity > 99.99,
-        "Similarity should be > 99.99%, got {}",
+        similarity > 99.0,
+        "Similarity {:.2}% is too low",
         similarity
     );
 }
 
 #[test]
-fn test_gradient_stroke_non_strict_with_fg() {
+fn test_square_gradient_stroke_non_strict_with_fg() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -71,7 +71,7 @@ fn test_gradient_stroke_non_strict_with_fg() {
     Command::cargo_bin("bgone")
         .unwrap()
         .args(&[
-            "tests/inputs/gradient_rect_on_dark_with_stroke.png",
+            "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--fg",
             "00ffff", // cyan
@@ -86,7 +86,7 @@ fn test_gradient_stroke_non_strict_with_fg() {
         .success();
 
     // Load images
-    let original = image::open("tests/inputs/gradient_rect_on_dark_with_stroke.png").unwrap();
+    let original = image::open("tests/inputs/square-gradient-stroke.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Reconstruct by overlaying on background
@@ -95,7 +95,7 @@ fn test_gradient_stroke_non_strict_with_fg() {
 
     // Save outputs for inspection
     save_test_images(
-        "gradient_stroke_comparison",
+        "square_gradient_stroke",
         "non_strict_with_fg",
         &processed,
         &reconstructed,
@@ -110,14 +110,14 @@ fn test_gradient_stroke_non_strict_with_fg() {
         similarity, psnr
     );
     assert!(
-        similarity > 99.99,
-        "Similarity should be > 99.99%, got {}",
+        similarity > 99.0,
+        "Similarity {:.2}% is too low",
         similarity
     );
 }
 
 #[test]
-fn test_gradient_stroke_strict_known_colors() {
+fn test_square_gradient_stroke_strict_known_colors() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -127,7 +127,7 @@ fn test_gradient_stroke_strict_known_colors() {
     Command::cargo_bin("bgone")
         .unwrap()
         .args(&[
-            "tests/inputs/gradient_rect_on_dark_with_stroke.png",
+            "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--strict",
             "--fg",
@@ -143,7 +143,7 @@ fn test_gradient_stroke_strict_known_colors() {
         .success();
 
     // Load images
-    let original = image::open("tests/inputs/gradient_rect_on_dark_with_stroke.png").unwrap();
+    let original = image::open("tests/inputs/square-gradient-stroke.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Reconstruct by overlaying on background
@@ -152,7 +152,7 @@ fn test_gradient_stroke_strict_known_colors() {
 
     // Save outputs for inspection
     save_test_images(
-        "gradient_stroke_comparison",
+        "square_gradient_stroke",
         "strict_known",
         &processed,
         &reconstructed,
@@ -167,14 +167,14 @@ fn test_gradient_stroke_strict_known_colors() {
         similarity, psnr
     );
     assert!(
-        similarity > 99.99,
-        "Similarity should be > 99.99%, got {}",
+        similarity > 99.0,
+        "Similarity {:.2}% is too low",
         similarity
     );
 }
 
 #[test]
-fn test_gradient_stroke_strict_auto_colors() {
+fn test_square_gradient_stroke_strict_auto_colors() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -184,7 +184,7 @@ fn test_gradient_stroke_strict_auto_colors() {
     Command::cargo_bin("bgone")
         .unwrap()
         .args(&[
-            "tests/inputs/gradient_rect_on_dark_with_stroke.png",
+            "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--strict",
             "--fg",
@@ -200,7 +200,7 @@ fn test_gradient_stroke_strict_auto_colors() {
         .success();
 
     // Load images
-    let original = image::open("tests/inputs/gradient_rect_on_dark_with_stroke.png").unwrap();
+    let original = image::open("tests/inputs/square-gradient-stroke.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Reconstruct by overlaying on background
@@ -209,7 +209,7 @@ fn test_gradient_stroke_strict_auto_colors() {
 
     // Save outputs for inspection
     save_test_images(
-        "gradient_stroke_comparison",
+        "square_gradient_stroke",
         "strict_auto",
         &processed,
         &reconstructed,
@@ -224,14 +224,14 @@ fn test_gradient_stroke_strict_auto_colors() {
         similarity, psnr
     );
     assert!(
-        similarity > 99.99,
-        "Similarity should be > 99.99%, got {}",
+        similarity > 99.0,
+        "Similarity {:.2}% is too low",
         similarity
     );
 }
 
 #[test]
-fn test_gradient_stroke_non_strict_with_fg_high_threshold() {
+fn test_square_gradient_stroke_non_strict_with_fg_high_threshold() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -241,7 +241,7 @@ fn test_gradient_stroke_non_strict_with_fg_high_threshold() {
     Command::cargo_bin("bgone")
         .unwrap()
         .args(&[
-            "tests/inputs/gradient_rect_on_dark_with_stroke.png",
+            "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--fg",
             "00ffff", // cyan
@@ -258,7 +258,7 @@ fn test_gradient_stroke_non_strict_with_fg_high_threshold() {
         .success();
 
     // Load images
-    let original = image::open("tests/inputs/gradient_rect_on_dark_with_stroke.png").unwrap();
+    let original = image::open("tests/inputs/square-gradient-stroke.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Reconstruct by overlaying on background
@@ -267,7 +267,7 @@ fn test_gradient_stroke_non_strict_with_fg_high_threshold() {
 
     // Save outputs for inspection
     save_test_images(
-        "gradient_stroke_comparison",
+        "square_gradient_stroke",
         "non_strict_with_fg_high_threshold",
         &processed,
         &reconstructed,
@@ -282,8 +282,8 @@ fn test_gradient_stroke_non_strict_with_fg_high_threshold() {
         similarity, psnr
     );
     assert!(
-        similarity > 99.99,
-        "Similarity should be > 99.99%, got {}",
+        similarity > 99.0,
+        "Similarity {:.2}% is too low",
         similarity
     );
 }

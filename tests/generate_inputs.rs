@@ -11,27 +11,27 @@ fn generate_test_images() {
     std::fs::create_dir_all(inputs_dir).unwrap();
 
     // Test case 1: Red square on black background
-    generate_red_on_black();
+    generate_square();
 
-    // Test case 2: Red gradient (with alpha blend) on white background
-    generate_red_gradient_on_white();
+    // Test case 2: Red radial gradient (with alpha blend) on white background
+    generate_circle_gradient();
 
-    // Test case 3: Multiple colors on blue background
-    generate_multicolor_on_blue();
+    // Test case 3: Rectangles of different colors on blue background
+    generate_rectangles();
 
-    // Test case 4: Red with purple glow
-    generate_red_with_purple_glow();
+    // Test case 4: Red square with purple glow on black background
+    generate_square_glow();
 
-    // Test case 5: Three color gradients on white
-    generate_three_gradients_on_white();
+    // Test case 5: Three radial gradients of different colors on white background
+    generate_circle_gradients();
 
-    // Test case 6: Gradient rectangle on dark background
-    generate_gradient_rect_on_dark();
+    // Test case 6: Gradient square on dark background
+    generate_square_gradient();
 
     println!("Test inputs generated in tests/inputs/");
 }
 
-fn generate_red_on_black() {
+fn generate_square() {
     let mut img = RgbaImage::new(100, 100);
 
     // Fill with black background
@@ -46,10 +46,10 @@ fn generate_red_on_black() {
         }
     }
 
-    img.save("tests/inputs/red_on_black.png").unwrap();
+    img.save("tests/inputs/square.png").unwrap();
 }
 
-fn generate_red_gradient_on_white() {
+fn generate_circle_gradient() {
     let mut img = RgbaImage::new(100, 100);
 
     // Create a red gradient that fades to white (simulating alpha blend)
@@ -67,10 +67,10 @@ fn generate_red_gradient_on_white() {
         }
     }
 
-    img.save("tests/inputs/red_gradient_on_white.png").unwrap();
+    img.save("tests/inputs/circle-gradient.png").unwrap();
 }
 
-fn generate_multicolor_on_blue() {
+fn generate_rectangles() {
     let mut img = RgbaImage::new(150, 100);
 
     // Fill with blue background
@@ -99,8 +99,7 @@ fn generate_multicolor_on_blue() {
         }
     }
 
-    // Add semi-transparent overlays to test blending
-    // Using 75% opacity to avoid confusion with solid colors
+    // Add semi-transparent rectangles (75% opacity) to test blending
     for y in 50..70 {
         for x in 20..50 {
             // 75% red + 25% blue = (191, 0, 64)
@@ -116,10 +115,10 @@ fn generate_multicolor_on_blue() {
         }
     }
 
-    img.save("tests/inputs/multicolor_on_blue.png").unwrap();
+    img.save("tests/inputs/rectangles.png").unwrap();
 }
 
-fn generate_red_with_purple_glow() {
+fn generate_square_glow() {
     let width = 200;
     let height = 200;
     let mut img = RgbaImage::new(width, height);
@@ -171,10 +170,10 @@ fn generate_red_with_purple_glow() {
         }
     }
 
-    img.save("tests/inputs/red_with_purple_glow.png").unwrap();
+    img.save("tests/inputs/square-glow.png").unwrap();
 }
 
-fn generate_three_gradients_on_white() {
+fn generate_circle_gradients() {
     let width = 300;
     let height = 100;
     let mut img = RgbaImage::new(width, height);
@@ -255,11 +254,10 @@ fn generate_three_gradients_on_white() {
         }
     }
 
-    img.save("tests/inputs/three_gradients_on_white.png")
-        .unwrap();
+    img.save("tests/inputs/circle-gradients.png").unwrap();
 }
 
-fn generate_gradient_rect_on_dark() {
+fn generate_square_gradient() {
     let mut img = RgbaImage::new(200, 200);
 
     // Fill with dark (but not black) background - dark gray/blue
@@ -298,5 +296,5 @@ fn generate_gradient_rect_on_dark() {
         }
     }
 
-    img.save("tests/inputs/gradient_rect_on_dark.png").unwrap();
+    img.save("tests/inputs/square-gradient.png").unwrap();
 }

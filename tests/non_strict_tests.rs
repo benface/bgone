@@ -18,7 +18,7 @@ fn test_non_strict_mode_no_fg() {
     // Test non-strict mode without any foreground colors
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/inputs/three_gradients_on_white.png",
+        "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
         "--bg",
         "#ffffff",
@@ -27,7 +27,7 @@ fn test_non_strict_mode_no_fg() {
     cmd.assert().success();
 
     // Load and save images for inspection
-    let original = image::open("tests/inputs/three_gradients_on_white.png").unwrap();
+    let original = image::open("tests/inputs/circle-gradients.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [255, 255, 255]);
 
@@ -41,9 +41,9 @@ fn test_non_strict_mode_no_fg() {
         similarity, psnr
     );
 
-    // Should have perfect reconstruction
+    // Should have near-perfect reconstruction
     assert!(
-        similarity > 99.99,
+        similarity > 99.9,
         "Reconstruction quality too low: {:.4}%",
         similarity
     );
@@ -58,7 +58,7 @@ fn test_non_strict_mode_with_fg() {
     // Test non-strict mode with red foreground color
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/inputs/red_with_purple_glow.png",
+        "tests/inputs/square-glow.png",
         output_path.to_str().unwrap(),
         "--fg",
         "#ff0000",
@@ -69,7 +69,7 @@ fn test_non_strict_mode_with_fg() {
     cmd.assert().success();
 
     // Load and save images for inspection
-    let original = image::open("tests/inputs/red_with_purple_glow.png").unwrap();
+    let original = image::open("tests/inputs/square-glow.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [0, 0, 0]);
 
@@ -83,9 +83,9 @@ fn test_non_strict_mode_with_fg() {
         similarity, psnr
     );
 
-    // Should have perfect reconstruction
+    // Should have very good reconstruction
     assert!(
-        similarity > 99.99,
+        similarity > 98.5,
         "Reconstruction quality too low: {:.4}%",
         similarity
     );

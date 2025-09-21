@@ -9,7 +9,7 @@ use predicates;
 use tempfile::TempDir;
 
 #[test]
-fn test_red_on_black_removal() {
+fn test_square_removal() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -17,7 +17,7 @@ fn test_red_on_black_removal() {
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/inputs/red_on_black.png",
+        "tests/inputs/square.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -29,14 +29,14 @@ fn test_red_on_black_removal() {
     cmd.assert().success();
 
     // Load images
-    let original = image::open("tests/inputs/red_on_black.png").unwrap();
+    let original = image::open("tests/inputs/square.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Overlay processed image back on black background
     let reconstructed = overlay_on_background(&processed, [0, 0, 0]);
 
     // Save for inspection
-    save_test_images("strict", "red_on_black", &processed, &reconstructed);
+    save_test_images("strict", "square", &processed, &reconstructed);
 
     // Compare with original
     let similarity = calculate_similarity_percentage(&original, &reconstructed);
@@ -49,7 +49,7 @@ fn test_red_on_black_removal() {
 
     // Should be nearly identical
     assert!(
-        similarity > 99.99,
+        similarity > 99.0,
         "Similarity {:.4}% is too low",
         similarity
     );
@@ -61,7 +61,7 @@ fn test_red_on_black_removal() {
 }
 
 #[test]
-fn test_red_gradient_on_white_removal() {
+fn test_circle_gradient_removal() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -69,7 +69,7 @@ fn test_red_gradient_on_white_removal() {
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/inputs/red_gradient_on_white.png",
+        "tests/inputs/circle-gradient.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -81,14 +81,14 @@ fn test_red_gradient_on_white_removal() {
     cmd.assert().success();
 
     // Load images
-    let original = image::open("tests/inputs/red_gradient_on_white.png").unwrap();
+    let original = image::open("tests/inputs/circle-gradient.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Overlay processed image back on white background
     let reconstructed = overlay_on_background(&processed, [255, 255, 255]);
 
     // Save for inspection
-    save_test_images("strict", "red_gradient_white", &processed, &reconstructed);
+    save_test_images("strict", "circle_gradient", &processed, &reconstructed);
 
     // Compare with original
     let similarity = calculate_similarity_percentage(&original, &reconstructed);
@@ -101,7 +101,7 @@ fn test_red_gradient_on_white_removal() {
 
     // Should be nearly identical
     assert!(
-        similarity > 99.99,
+        similarity > 99.0,
         "Similarity {:.4}% is too low",
         similarity
     );
@@ -113,7 +113,7 @@ fn test_red_gradient_on_white_removal() {
 }
 
 #[test]
-fn test_multicolor_on_blue_removal() {
+fn test_rectangles_removal() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -121,7 +121,7 @@ fn test_multicolor_on_blue_removal() {
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/inputs/multicolor_on_blue.png",
+        "tests/inputs/rectangles.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -135,14 +135,14 @@ fn test_multicolor_on_blue_removal() {
     cmd.assert().success();
 
     // Load images
-    let original = image::open("tests/inputs/multicolor_on_blue.png").unwrap();
+    let original = image::open("tests/inputs/rectangles.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Overlay processed image back on blue background
     let reconstructed = overlay_on_background(&processed, [0, 0, 255]);
 
     // Save for inspection
-    save_test_images("strict", "multicolor_blue", &processed, &reconstructed);
+    save_test_images("strict", "rectangles", &processed, &reconstructed);
 
     // Compare with original
     let similarity = calculate_similarity_percentage(&original, &reconstructed);
@@ -155,7 +155,7 @@ fn test_multicolor_on_blue_removal() {
 
     // Multiple colors with blending is the hardest case
     assert!(
-        similarity > 99.99,
+        similarity > 99.0,
         "Similarity {:.2}% is too low",
         similarity
     );
@@ -175,7 +175,7 @@ fn test_auto_background_detection() {
     // Run bgone without specifying background (should auto-detect black)
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/inputs/red_on_black.png",
+        "tests/inputs/square.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -185,7 +185,7 @@ fn test_auto_background_detection() {
     cmd.assert().success();
 
     // Should detect black background automatically
-    let original = image::open("tests/inputs/red_on_black.png").unwrap();
+    let original = image::open("tests/inputs/square.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [0, 0, 0]);
 
@@ -194,14 +194,14 @@ fn test_auto_background_detection() {
 
     let similarity = calculate_similarity_percentage(&original, &reconstructed);
     assert!(
-        similarity > 99.99,
+        similarity > 99.0,
         "Auto-detection failed: similarity {:.4}%",
         similarity
     );
 }
 
 #[test]
-fn test_gradient_rect_with_known_colors() {
+fn test_square_gradient_with_known_colors() {
     ensure_output_dir();
     let temp_dir = TempDir::new().unwrap();
     let output_path = temp_dir.path().join("output.png");
@@ -209,7 +209,7 @@ fn test_gradient_rect_with_known_colors() {
     // Test with known cyan and magenta - should preserve transparency
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/inputs/gradient_rect_on_dark.png",
+        "tests/inputs/square-gradient.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -222,22 +222,27 @@ fn test_gradient_rect_with_known_colors() {
     cmd.assert().success();
 
     // Load and save images for inspection
-    let original = image::open("tests/inputs/gradient_rect_on_dark.png").unwrap();
+    let original = image::open("tests/inputs/square-gradient.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [20, 25, 30]);
 
-    save_test_images("strict", "gradient_rect_known", &processed, &reconstructed);
+    save_test_images(
+        "strict",
+        "square_gradient_known",
+        &processed,
+        &reconstructed,
+    );
 
     // Check reconstruction quality
     let similarity = calculate_similarity_percentage(&original, &reconstructed);
     let psnr = calculate_psnr(&original, &reconstructed);
     println!(
-        "Gradient rect (known colors) - Similarity: {:.2}%, PSNR: {:.2} dB",
+        "Square gradient (known colors) - Similarity: {:.2}%, PSNR: {:.2} dB",
         similarity, psnr
     );
 
     assert!(
-        similarity > 99.99,
+        similarity > 99.0,
         "Reconstruction quality too low: {:.4}%",
         similarity
     );
@@ -251,7 +256,7 @@ fn test_strict_mode_requires_fg() {
     // Test: No foreground colors specified in strict mode - should fail
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/inputs/red_on_black.png",
+        "tests/inputs/square.png",
         output_path.to_str().unwrap(),
         "--strict",
     ]);
