@@ -1,5 +1,6 @@
 pub mod background;
 pub mod color;
+pub mod deduce;
 pub mod testing;
 pub mod unmix;
 

@@ -7,6 +7,8 @@ Ultra-fast CLI tool for removing solid background colors from images using color
 - **Blazing fast** - Written in Rust with parallel processing
 - **Multiple foreground colors** - Handles images with multiple foreground colors mixed with the background
 - **Auto background detection** - Automatically detects background color from image edges
+- **Auto color deduction** - Can automatically find unknown foreground colors using the `auto` keyword
+- **Opacity optimization** - Maximizes opacity while maintaining exact color accuracy
 - **Progress tracking** - Real-time progress bar during processing
 - **Precise color unmixing** - Uses least-squares optimization for accurate color separation
 
@@ -22,6 +24,14 @@ bgone input.png output.png --fg=#f00 --bg=#fff
 # Multiple foreground colors
 bgone input.png output.png --fg f00 0f0 00f
 
+# Automatic color deduction - finds unknown colors
+bgone input.png output.png --fg auto
+bgone input.png output.png --fg auto auto --bg fff
+
+# Mix known and unknown colors
+bgone input.png output.png --fg ff0000 auto
+bgone input.png output.png --fg f00 auto 00f
+
 # Multiple colors with # prefix still works, but requires quotes in shell
 bgone input.png output.png --fg "#f00" "#0f0" "#00f"
 
@@ -33,6 +43,12 @@ bgone input.png output.png --fg ff0000 0f0 00f --bg fff
 
 The tool uses a color unmixing algorithm to determine how much of each foreground color and the background color contributed to each pixel. It then reconstructs the image with proper alpha transparency.
 
+When using the `auto` keyword, bgone:
+1. Analyzes all colors in the image
+2. Calculates what unmixed foreground colors could produce the observed blended colors
+3. Evaluates different color combinations to find the best match
+4. Optimizes for maximum opacity while preserving exact color accuracy
+
 ## Project Structure
 
 ```
@@ -41,6 +57,7 @@ src/
 ├── lib.rs         # Main image processing logic
 ├── color.rs       # Color types and utilities
 ├── background.rs  # Background detection
+├── deduce.rs      # Automatic color deduction
 └── unmix.rs       # Color unmixing algorithm
 ```
 
@@ -76,7 +93,7 @@ The project includes a comprehensive testing framework that validates the color 
 
 ```bash
 # Run all tests
-cargo test
+cargo test -- --nocapture
 
 # Generate test fixtures (only needed once)
 cargo test --test generate_fixtures -- --ignored

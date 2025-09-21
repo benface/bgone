@@ -17,3 +17,4 @@ indicatif = { version = "0.18", features = ["rayon"] }
 assert_cmd = "2.0"
 tempfile = "3.8"
 approx = "0.5"
+predicates = "3.0"

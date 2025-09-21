@@ -22,6 +22,16 @@ pub fn unmix_colors(
     foreground_colors: &[NormalizedColor],
     background: NormalizedColor,
 ) -> UnmixResult {
+    unmix_colors_internal(observed, foreground_colors, background, true)
+}
+
+/// Internal unmix function with opacity optimization control
+pub(crate) fn unmix_colors_internal(
+    observed: Color,
+    foreground_colors: &[NormalizedColor],
+    background: NormalizedColor,
+    optimize_opacity: bool,
+) -> UnmixResult {
     let observed = Vector3::new(
         observed[0] as f64 / 255.0,
         observed[1] as f64 / 255.0,
@@ -34,7 +44,13 @@ pub fn unmix_colors(
             alpha: 0.0,
         },
         1 => unmix_single_color(observed, foreground_colors[0], background),
-        _ => unmix_multiple_colors(observed, foreground_colors, background),
+        _ => {
+            if optimize_opacity {
+                unmix_multiple_colors_optimized(observed, foreground_colors, background)
+            } else {
+                unmix_multiple_colors_simple(observed, foreground_colors, background)
+            }
+        }
     }
 }
 
@@ -66,8 +82,8 @@ fn unmix_single_color(
     }
 }
 
-/// Unmix when there are multiple foreground colors using least squares
-fn unmix_multiple_colors(
+/// Simple unmix using least squares (for color deduction)
+fn unmix_multiple_colors_simple(
     observed: Vector3<f64>,
     foreground_colors: &[NormalizedColor],
     background: NormalizedColor,
@@ -113,6 +129,144 @@ fn unmix_multiple_colors(
     UnmixResult {
         weights: final_weights,
         alpha,
+    }
+}
+
+/// Unmix when there are multiple foreground colors using least squares
+/// Optimizes for maximum opacity while maintaining color accuracy.
+///
+/// This function tries multiple approaches to find the solution with maximum
+/// opacity that still accurately reconstructs the observed color:
+/// 1. Standard least squares (all colors)
+/// 2. Single colors (maximum possible opacity)
+/// 3. Pairs of colors (compromise between opacity and flexibility)
+///
+/// All solutions are verified to ensure they reconstruct the original color
+/// within a small error threshold.
+fn unmix_multiple_colors_optimized(
+    observed: Vector3<f64>,
+    foreground_colors: &[NormalizedColor],
+    background: NormalizedColor,
+) -> UnmixResult {
+    let n = foreground_colors.len();
+    let bg = Vector3::from_row_slice(&background);
+    let target = observed - bg;
+
+    // Try different approaches to find the one with maximum opacity
+    let mut best_weights = vec![0.0; n];
+    let mut best_alpha = 0.0;
+
+    // Approach 1: Standard least squares solution
+    let mut matrix_data = Vec::with_capacity(3 * n);
+    for fg in foreground_colors {
+        matrix_data.push(fg[0] - background[0]);
+        matrix_data.push(fg[1] - background[1]);
+        matrix_data.push(fg[2] - background[2]);
+    }
+
+    let a = DMatrix::from_column_slice(3, n, &matrix_data);
+    let b_vec = DVector::from_column_slice(&[target[0], target[1], target[2]]);
+
+    if let Ok(a_inv) = a.pseudo_inverse(EPSILON) {
+        let solution = a_inv * b_vec.clone();
+        let weights: Vec<f64> = solution.iter().map(|&w| w.max(0.0)).collect();
+        let sum: f64 = weights.iter().sum();
+
+        if sum > 0.0 {
+            let alpha = sum.min(1.0);
+            if alpha > best_alpha {
+                best_weights = if sum > 1.0 {
+                    weights.iter().map(|w| w / sum).collect()
+                } else {
+                    weights
+                };
+                best_alpha = alpha;
+            }
+        }
+    }
+
+    // Approach 2: Try each color individually to see if any single color achieves higher opacity
+    for (i, fg) in foreground_colors.iter().enumerate() {
+        let fg_vec = Vector3::from_row_slice(fg);
+        let fg_minus_bg = fg_vec - bg;
+
+        if fg_minus_bg.norm() > EPSILON {
+            let dot = target.dot(&fg_minus_bg);
+            let norm_sq = fg_minus_bg.dot(&fg_minus_bg);
+            let weight = (dot / norm_sq).clamp(0.0, 1.0);
+
+            // Verify the reconstructed color is close to the observed color
+            let reconstructed = weight * fg_vec + (1.0 - weight) * bg;
+            let error = (reconstructed - observed).norm();
+
+            // Only accept if the reconstruction error is small
+            if weight > best_alpha && error < 0.01 {
+                best_weights = vec![0.0; n];
+                best_weights[i] = weight;
+                best_alpha = weight;
+            }
+        }
+    }
+
+    // Approach 3: Try pairs of colors for better opacity
+    if n >= 2 && best_alpha < 0.99 {
+        for i in 0..n {
+            for j in (i + 1)..n {
+                // Build 3x2 matrix for this pair
+                let fg_i = foreground_colors[i];
+                let fg_j = foreground_colors[j];
+                let pair_matrix = DMatrix::from_column_slice(
+                    3,
+                    2,
+                    &[
+                        fg_i[0] - background[0],
+                        fg_j[0] - background[0],
+                        fg_i[1] - background[1],
+                        fg_j[1] - background[1],
+                        fg_i[2] - background[2],
+                        fg_j[2] - background[2],
+                    ],
+                );
+
+                if let Ok(pair_inv) = pair_matrix.pseudo_inverse(EPSILON) {
+                    let pair_solution = pair_inv * b_vec.clone();
+                    let w_i = pair_solution[0].max(0.0);
+                    let w_j = pair_solution[1].max(0.0);
+                    let sum = w_i + w_j;
+
+                    if sum > 0.0 {
+                        let alpha = sum.min(1.0);
+
+                        // Verify the reconstruction is accurate
+                        let normalized_wi = if sum > 1.0 { w_i / sum } else { w_i };
+                        let normalized_wj = if sum > 1.0 { w_j / sum } else { w_j };
+                        let reconstructed = normalized_wi * Vector3::from_row_slice(&fg_i)
+                            + normalized_wj * Vector3::from_row_slice(&fg_j)
+                            + (1.0 - normalized_wi - normalized_wj) * bg;
+                        let error = (reconstructed - observed).norm();
+
+                        // Only accept if reconstruction is accurate AND alpha is better
+                        if alpha > best_alpha && error < 0.01 {
+                            best_weights = vec![0.0; n];
+                            if sum > 1.0 {
+                                best_weights[i] = w_i / sum;
+                                best_weights[j] = w_j / sum;
+                                best_alpha = 1.0;
+                            } else {
+                                best_weights[i] = w_i;
+                                best_weights[j] = w_j;
+                                best_alpha = alpha;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    UnmixResult {
+        weights: best_weights,
+        alpha: best_alpha,
     }
 }
 

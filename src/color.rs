@@ -9,6 +9,15 @@ pub type Color = [u8; 3];
 /// Normalized RGB color with values 0.0-1.0
 pub type NormalizedColor = [f64; 3];
 
+/// A foreground color specification - either known or unknown
+#[derive(Debug, Clone, PartialEq)]
+pub enum ForegroundColorSpec {
+    /// A known color specified by the user
+    Known(Color),
+    /// An unknown color to be deduced by the algorithm
+    Unknown,
+}
+
 /// Parse a hex color string into RGB
 /// Supports: "#ff0000", "ff0000", "#f00", "f00"
 pub fn parse_hex_color(hex: &str) -> Result<Color> {
@@ -37,6 +46,16 @@ pub fn parse_hex_color(hex: &str) -> Result<Color> {
     };
 
     Ok([r, g, b])
+}
+
+/// Parse a foreground color specification
+/// Can be either a hex color or "auto" for unknown
+pub fn parse_foreground_spec(spec: &str) -> Result<ForegroundColorSpec> {
+    if spec == "auto" {
+        Ok(ForegroundColorSpec::Unknown)
+    } else {
+        parse_hex_color(spec).map(ForegroundColorSpec::Known)
+    }
 }
 
 /// Convert a Color to NormalizedColor
@@ -96,5 +115,27 @@ mod tests {
     #[test]
     fn test_normalize_color() {
         assert_eq!(normalize_color([255, 127, 0]), [1.0, 127.0 / 255.0, 0.0]);
+    }
+
+    #[test]
+    fn test_parse_foreground_spec() {
+        // Test unknown placeholder
+        assert_eq!(
+            parse_foreground_spec("auto").unwrap(),
+            ForegroundColorSpec::Unknown
+        );
+
+        // Test known colors
+        assert_eq!(
+            parse_foreground_spec("#ff0000").unwrap(),
+            ForegroundColorSpec::Known([255, 0, 0])
+        );
+        assert_eq!(
+            parse_foreground_spec("f00").unwrap(),
+            ForegroundColorSpec::Known([255, 0, 0])
+        );
+
+        // Test invalid input
+        assert!(parse_foreground_spec("invalid").is_err());
     }
 }
