@@ -252,7 +252,7 @@ fn test_gradient_stroke_non_strict_with_fg_high_threshold() {
             "--bg",
             "14191e", // dark background (20, 25, 30)
             "--threshold",
-            "0.2", // 20% threshold instead of default 5%
+            "0.5", // 50% threshold instead of default 5%
         ])
         .assert()
         .success();

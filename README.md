@@ -34,7 +34,7 @@ cargo install bgone
 In non-strict mode, bgone can use any color needed to perfectly reconstruct the image while making the background transparent.
 
 ```bash
-# Remove background without specifying foreground colors
+# Fully automatic - detects the background and removes it
 bgone input.png output.png
 
 # With background color - overrides automatic detection
@@ -93,7 +93,7 @@ bgone input.png output.png --fg ff0000 0f0 00f --bg fff
 - `-b, --bg COLOR` - Background color in hex format
   - If not specified, automatically detects the background color
 - `-s, --strict` - Enable strict mode (requires `--fg` and restricts to specified colors only)
-- `-t, --threshold FLOAT` - Color similarity threshold (0.0-1.0, default: 0.05)
+- `-t, --threshold FLOAT` - Color similarity threshold (`0.0`-`1.0`, default: `0.05`)
   - When using one or multiple `auto` foreground colors: colors within this threshold are considered similar during deduction
   - When using any `--fg` in non-strict mode: pixels within this threshold of a (known or deduced) foreground color will use that color
 - `-h, --help` - Print help information

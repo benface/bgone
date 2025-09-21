@@ -7,7 +7,7 @@ use bgone::{
     background::detect_background_color,
     color::{parse_foreground_spec, parse_hex_color, Color, ForegroundColorSpec},
     deduce::deduce_unknown_colors,
-    process_image,
+    process_image, unmix,
 };
 
 #[derive(Parser, Debug)]
@@ -82,7 +82,9 @@ fn main() -> Result<()> {
             .with_context(|| format!("Failed to open input image: {}", args.input.display()))?;
 
         // Use threshold for color deduction if provided, otherwise use default
-        let deduction_threshold = args.threshold.unwrap_or(0.05);
+        let deduction_threshold = args
+            .threshold
+            .unwrap_or(unmix::DEFAULT_COLOR_CLOSENESS_THRESHOLD);
         deduce_unknown_colors(
             &img,
             &foreground_specs,
