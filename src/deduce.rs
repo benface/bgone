@@ -16,6 +16,7 @@ fn find_candidate_foreground_colors(
     observed_colors: &[(Color, usize)], // (color, count)
     background: Color,
     num_candidates: usize,
+    threshold: f64,
 ) -> Vec<Color> {
     let bg_norm = normalize_color(background);
     let mut candidates = Vec::new();
@@ -83,7 +84,7 @@ fn find_candidate_foreground_colors(
     for candidate in candidates {
         let mut is_duplicate = false;
         for existing in &unique_candidates {
-            if color_distance(normalize_color(candidate), normalize_color(*existing)) < 0.05 {
+            if color_distance(normalize_color(candidate), normalize_color(*existing)) < threshold {
                 is_duplicate = true;
                 break;
             }
@@ -199,6 +200,7 @@ pub fn deduce_unknown_colors(
     image: &DynamicImage,
     specs: &[ForegroundColorSpec],
     background_color: Color,
+    threshold: f64,
 ) -> Result<Vec<Color>> {
     // Separate known and unknown specs
     let mut known_colors = Vec::new();
@@ -255,6 +257,7 @@ pub fn deduce_unknown_colors(
         &pixels,
         background_color,
         unknown_count * 10, // Get more candidates for better selection
+        threshold,
     );
 
     // If we don't have enough candidates, add some standard colors
@@ -400,7 +403,7 @@ mod tests {
         ];
 
         let img = DynamicImage::new_rgb8(10, 10);
-        let result = deduce_unknown_colors(&img, &specs, [0, 0, 0]).unwrap();
+        let result = deduce_unknown_colors(&img, &specs, [0, 0, 0], 0.05).unwrap();
 
         assert_eq!(result, vec![[255, 0, 0], [0, 255, 0]]);
     }

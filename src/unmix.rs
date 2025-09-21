@@ -4,6 +4,9 @@ use nalgebra::{DMatrix, DVector, Vector3};
 /// Small epsilon value for numerical stability in floating point comparisons
 const EPSILON: f64 = 1e-10;
 
+/// Default threshold for color closeness in non-strict mode (0.05 = 5% of max RGB distance)
+pub const DEFAULT_COLOR_CLOSENESS_THRESHOLD: f64 = 0.05;
+
 /// Result of color unmixing: weights for each foreground color and overall alpha
 #[derive(Debug, Clone)]
 pub struct UnmixResult {
@@ -270,6 +273,45 @@ fn unmix_multiple_colors_optimized(
     }
 }
 
+/// Calculate the Euclidean distance between two colors in RGB space
+fn color_distance(color1: Vector3<f64>, color2: Vector3<f64>) -> f64 {
+    (color1 - color2).norm()
+}
+
+/// Check if an observed color is "close enough" to any foreground color when unmixed
+/// Returns true if the color can be primarily represented by one of the foreground colors
+pub fn is_color_close_to_foreground(
+    observed: Vector3<f64>,
+    foreground_colors: &[NormalizedColor],
+    background: NormalizedColor,
+    threshold: f64,
+) -> bool {
+    // Try unmixing with each individual foreground color
+    for fg in foreground_colors {
+        let fg_vec = Vector3::from_row_slice(fg);
+        let bg_vec = Vector3::from_row_slice(&background);
+
+        // Calculate the weight needed for this foreground color
+        let fg_minus_bg = fg_vec - bg_vec;
+        if fg_minus_bg.norm() > EPSILON {
+            let obs_minus_bg = observed - bg_vec;
+            let dot = obs_minus_bg.dot(&fg_minus_bg);
+            let norm_sq = fg_minus_bg.dot(&fg_minus_bg);
+            let weight = (dot / norm_sq).clamp(0.0, 1.0);
+
+            // Reconstruct the color with this single foreground
+            let reconstructed = weight * fg_vec + (1.0 - weight) * bg_vec;
+
+            // Check if the reconstruction is close to the observed color
+            if color_distance(reconstructed, observed) < threshold {
+                return true;
+            }
+        }
+    }
+
+    false
+}
+
 /// Compute the final color from unmixing results
 pub fn compute_result_color(
     unmix_result: &UnmixResult,
@@ -394,5 +436,30 @@ mod tests {
             [0.502, 0.502, 0.502], // Gray background same as observed
         );
         assert!(result2.alpha < 0.01); // Should be nearly transparent
+    }
+
+    #[test]
+    fn test_color_distance() {
+        let color1 = Vector3::new(0.0, 0.0, 0.0);
+        let color2 = Vector3::new(1.0, 0.0, 0.0);
+        assert!((color_distance(color1, color2) - 1.0).abs() < EPSILON);
+
+        let color3 = Vector3::new(0.0, 0.0, 0.0);
+        let color4 = Vector3::new(1.0, 1.0, 1.0);
+        assert!((color_distance(color3, color4) - 1.732).abs() < 0.01); // sqrt(3)
+    }
+
+    #[test]
+    fn test_is_color_close_to_foreground() {
+        let red = [1.0, 0.0, 0.0];
+        let black = [0.0, 0.0, 0.0];
+        let observed = Vector3::new(0.5, 0.0, 0.0); // 50% red
+
+        // Should be close to red when mixed with black background
+        assert!(is_color_close_to_foreground(observed, &[red], black, 0.1));
+
+        // Purple should not be close to red
+        let purple = Vector3::new(0.5, 0.0, 0.5);
+        assert!(!is_color_close_to_foreground(purple, &[red], black, 0.1));
     }
 }

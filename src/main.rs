@@ -15,7 +15,7 @@ use bgone::{
     name = "bgone",
     about = "Ultra-fast CLI tool for removing solid background colors from images",
     version,
-    author
+    disable_version_flag = true
 )]
 struct Args {
     /// Input image path
@@ -24,23 +24,49 @@ struct Args {
     /// Output image path
     output: PathBuf,
 
-    /// Foreground colors in hex format (e.g., f00, ff0000, #ff0000) or 'auto' for unknown
-    /// Multiple colors can be specified for color unmixing
-    /// Use 'auto' to let the tool deduce unknown colors (e.g., --fg ff0000 auto auto)
-    #[arg(long = "fg", required = true, num_args = 1.., value_name = "COLOR")]
+    /// Foreground colors in hex format (e.g., f00, ff0000, #ff0000) or 'auto' for unknown.
+    /// Multiple colors can be specified for color unmixing.
+    /// Use 'auto' to let the tool deduce unknown colors (e.g., --fg ff0000 auto auto).
+    /// In non-strict mode, this is optional.
+    #[arg(short = 'f', long = "fg", num_args = 1.., value_name = "COLOR")]
     foreground_colors: Vec<String>,
 
-    /// Background color in hex format (e.g., fff, ffffff, #ffffff)
-    /// If not specified, the background color will be auto-detected
-    #[arg(long = "bg", value_name = "COLOR")]
+    /// Background color in hex format (e.g., fff, ffffff, #ffffff).
+    /// If not specified, the background color will be auto-detected.
+    #[arg(short = 'b', long = "bg", value_name = "COLOR")]
     background_color: Option<String>,
+
+    /// Strict mode: requires --fg and restricts unmixing to specified colors only.
+    /// Without this flag, the tool can use any color for reconstruction.
+    #[arg(short = 's', long = "strict")]
+    strict: bool,
+
+    /// Color similarity threshold (0.0-1.0).
+    /// In non-strict mode with --fg: pixels within this threshold of a foreground color will use that color.
+    /// In strict mode with 'auto': colors within this threshold are considered similar during deduction.
+    /// Default: 0.05 (5%)
+    #[arg(short = 't', long = "threshold", value_name = "FLOAT")]
+    threshold: Option<f64>,
+
+    /// Print version
+    #[arg(short = 'v', short_alias = 'V', long = "version", action = clap::ArgAction::Version)]
+    version: (),
 }
 
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Parse foreground color specifications
-    let foreground_specs = parse_foreground_specs(&args.foreground_colors)?;
+    // In strict mode, foreground colors are required
+    if args.strict && args.foreground_colors.is_empty() {
+        anyhow::bail!("In strict mode, at least one foreground color must be specified with --fg");
+    }
+
+    // Parse foreground color specifications (if any)
+    let foreground_specs = if args.foreground_colors.is_empty() {
+        Vec::new()
+    } else {
+        parse_foreground_specs(&args.foreground_colors)?
+    };
 
     // Determine background color
     let background_color = determine_background_color(&args)?;
@@ -55,7 +81,14 @@ fn main() -> Result<()> {
         let img = image::open(&args.input)
             .with_context(|| format!("Failed to open input image: {}", args.input.display()))?;
 
-        deduce_unknown_colors(&img, &foreground_specs, background_color)?
+        // Use threshold for color deduction if provided, otherwise use default
+        let deduction_threshold = args.threshold.unwrap_or(0.05);
+        deduce_unknown_colors(
+            &img,
+            &foreground_specs,
+            background_color,
+            deduction_threshold,
+        )?
     } else {
         // All colors are known, just extract them
         foreground_specs
@@ -67,12 +100,21 @@ fn main() -> Result<()> {
             .collect::<Result<Vec<_>>>()?
     };
 
+    // Validate threshold if provided
+    if let Some(threshold) = args.threshold {
+        if threshold < 0.0 || threshold > 1.0 {
+            anyhow::bail!("Threshold must be between 0.0 and 1.0, got: {}", threshold);
+        }
+    }
+
     // Process the image
     process_image(
         &args.input,
         &args.output,
         foreground_colors,
         background_color,
+        args.strict,
+        args.threshold,
     )?;
 
     Ok(())
@@ -94,13 +136,7 @@ fn parse_foreground_specs(color_strings: &[String]) -> Result<Vec<ForegroundColo
         })
         .collect();
 
-    let specs = specs?;
-
-    if specs.is_empty() {
-        anyhow::bail!("At least one foreground color must be specified");
-    }
-
-    Ok(specs)
+    specs
 }
 
 /// Determine background color either from user input or auto-detection

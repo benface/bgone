@@ -9,29 +9,58 @@ Ultra-fast CLI tool for removing solid background colors from images using color
 - **Auto background detection** - Automatically detects background color from image edges
 - **Auto color deduction** - Can automatically find unknown foreground colors using the `auto` keyword
 - **Opacity optimization** - Maximizes opacity while maintaining exact color accuracy
-- **Progress tracking** - Real-time progress bar during processing
 - **Precise color unmixing** - Uses least-squares optimization for accurate color separation
+- **Flexible modes** - Strict mode for exact color matching, or non-strict mode for more natural transparency
 
 ## Usage
 
+### Non-Strict Mode (Default)
+
+In non-strict mode, bgone can use any color needed to perfectly reconstruct the image while making the background transparent.
+
 ```bash
-# Single foreground color with auto-detected background
+# Remove background without specifying foreground colors
+bgone input.png output.png
+
+# With specific foreground colors - optimizes for high opacity when pixels match these colors
 bgone input.png output.png --fg=#ff0000
 
-# Using shorthand color notation
-bgone input.png output.png --fg=#f00 --bg=#fff
+# With specific background color - overrides automatic detection
+bgone input.png output.png --fg=#ff0000 --bg=#ffffff
 
 # Multiple foreground colors
-bgone input.png output.png --fg f00 0f0 00f
+bgone input.png output.png --fg ff0000 00ff00 0000ff
 
 # Automatic color deduction - finds unknown colors
 bgone input.png output.png --fg auto
-bgone input.png output.png --fg auto auto --bg fff
+bgone input.png output.png --fg auto auto --bg ffffff
 
 # Mix known and unknown colors
 bgone input.png output.png --fg ff0000 auto
-bgone input.png output.png --fg f00 auto 00f
 
+# Using shorthand notation
+bgone input.png output.png -f f00 -b fff
+bgone input.png output.png -f auto -s
+bgone input.png output.png -f f00 0f0 00f -b fff -t 0.1
+```
+
+### Strict Mode
+
+Strict mode restricts unmixing to only the specified foreground colors, ensuring exact color matching.
+
+```bash
+# Strict mode requires --fg, but supports both known colors and 'auto'
+bgone input.png output.png --strict --fg=#ff0000
+bgone input.png output.png --strict --fg auto
+bgone input.png output.png --strict --fg ff0000 auto
+
+# With specific background color
+bgone input.png output.png --strict --fg=#f00 --bg=#fff
+```
+
+### Additional Examples
+
+```bash
 # Multiple colors with # prefix still works, but requires quotes in shell
 bgone input.png output.png --fg "#f00" "#0f0" "#00f"
 
@@ -39,11 +68,45 @@ bgone input.png output.png --fg "#f00" "#0f0" "#00f"
 bgone input.png output.png --fg ff0000 0f0 00f --bg fff
 ```
 
+## CLI Options
+
+- `input` - Path to the input image
+- `output` - Path for the output image
+- `-f, --fg COLOR...` - Foreground colors in hex format (e.g., `f00`, `ff0000`, `#ff0000`) or `auto` for automatic deduction
+  - Optional in non-strict mode
+  - Required in strict mode
+- `-b, --bg COLOR` - Background color in hex format
+  - If not specified, automatically detects the background color
+- `-s, --strict` - Enable strict mode (requires `--fg` and restricts to specified colors only)
+- `-t, --threshold FLOAT` - Color similarity threshold (0.0-1.0, default: 0.05)
+  - When using `--fg auto`: colors within this threshold are considered similar during deduction
+  - When using any `--fg` in non-strict mode: pixels within this threshold of a foreground color will use that color
+- `-h, --help` - Print help information
+- `-v, --version` - Print version information
+
 ## How it works
 
 The tool uses a color unmixing algorithm to determine how much of each foreground color and the background color contributed to each pixel. It then reconstructs the image with proper alpha transparency.
 
+### Non-Strict Mode (Default)
+
+- **Without foreground colors**: Finds the optimal color and transparency for each pixel to perfectly reconstruct the image. Uses the minimum transparency needed for each pixel.
+- **With foreground colors**:
+  - Pixels within the threshold distance (default: 5%) of specified foreground colors use those colors with high opacity
+  - Other pixels (like glows, shadows, or gradients) can use ANY color needed for perfect reconstruction
+  - Always prioritizes correctness - every pixel is perfectly reconstructed
+
+### Strict Mode
+
+- Requires foreground colors to be specified
+- Restricts unmixing to only the specified colors
+- Optimizes for maximum opacity while maintaining exact color accuracy
+- Best for images with known, specific foreground colors
+
+### Automatic Color Deduction
+
 When using the `auto` keyword, bgone:
+
 1. Analyzes all colors in the image
 2. Calculates what unmixed foreground colors could produce the observed blended colors
 3. Evaluates different color combinations to find the best match
