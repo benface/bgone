@@ -1,6 +1,6 @@
 [package]
 name = "bgone"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Benface <benoit@benface.com>"]
 description = "Ultra-fast CLI tool for removing solid background colors from images"
