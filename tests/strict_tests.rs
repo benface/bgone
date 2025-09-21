@@ -1,8 +1,10 @@
 mod common;
 
 use assert_cmd::Command;
-use bgone::testing::{calculate_psnr, calculate_similarity_percentage, overlay_on_background};
-use common::{ensure_output_dir, save_test_images};
+use common::{
+    calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
+    save_test_images,
+};
 use predicates;
 use tempfile::TempDir;
 
@@ -15,7 +17,7 @@ fn test_red_on_black_removal() {
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/red_on_black.png",
+        "tests/inputs/red_on_black.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -27,7 +29,7 @@ fn test_red_on_black_removal() {
     cmd.assert().success();
 
     // Load images
-    let original = image::open("tests/fixtures/red_on_black.png").unwrap();
+    let original = image::open("tests/inputs/red_on_black.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Overlay processed image back on black background
@@ -67,7 +69,7 @@ fn test_red_gradient_on_white_removal() {
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/red_gradient_on_white.png",
+        "tests/inputs/red_gradient_on_white.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -79,7 +81,7 @@ fn test_red_gradient_on_white_removal() {
     cmd.assert().success();
 
     // Load images
-    let original = image::open("tests/fixtures/red_gradient_on_white.png").unwrap();
+    let original = image::open("tests/inputs/red_gradient_on_white.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Overlay processed image back on white background
@@ -119,7 +121,7 @@ fn test_multicolor_on_blue_removal() {
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/multicolor_on_blue.png",
+        "tests/inputs/multicolor_on_blue.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -133,7 +135,7 @@ fn test_multicolor_on_blue_removal() {
     cmd.assert().success();
 
     // Load images
-    let original = image::open("tests/fixtures/multicolor_on_blue.png").unwrap();
+    let original = image::open("tests/inputs/multicolor_on_blue.png").unwrap();
     let processed = image::open(&output_path).unwrap();
 
     // Overlay processed image back on blue background
@@ -173,7 +175,7 @@ fn test_auto_background_detection() {
     // Run bgone without specifying background (should auto-detect black)
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/red_on_black.png",
+        "tests/inputs/red_on_black.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -183,7 +185,7 @@ fn test_auto_background_detection() {
     cmd.assert().success();
 
     // Should detect black background automatically
-    let original = image::open("tests/fixtures/red_on_black.png").unwrap();
+    let original = image::open("tests/inputs/red_on_black.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [0, 0, 0]);
 
@@ -207,7 +209,7 @@ fn test_gradient_rect_with_known_colors() {
     // Test with known cyan and magenta - should preserve transparency
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/gradient_rect_on_dark.png",
+        "tests/inputs/gradient_rect_on_dark.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -220,7 +222,7 @@ fn test_gradient_rect_with_known_colors() {
     cmd.assert().success();
 
     // Load and save images for inspection
-    let original = image::open("tests/fixtures/gradient_rect_on_dark.png").unwrap();
+    let original = image::open("tests/inputs/gradient_rect_on_dark.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [20, 25, 30]);
 
@@ -249,7 +251,7 @@ fn test_strict_mode_requires_fg() {
     // Test: No foreground colors specified in strict mode - should fail
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/red_on_black.png",
+        "tests/inputs/red_on_black.png",
         output_path.to_str().unwrap(),
         "--strict",
     ]);

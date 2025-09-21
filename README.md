@@ -6,11 +6,26 @@ Ultra-fast CLI tool for removing solid background colors from images using color
 
 - **Blazing fast** - Written in Rust with parallel processing
 - **Multiple foreground colors** - Handles images with multiple foreground colors mixed with the background
-- **Auto background detection** - Automatically detects background color from image edges
-- **Auto color deduction** - Can automatically find unknown foreground colors using the `auto` keyword
-- **Opacity optimization** - Maximizes opacity while maintaining exact color accuracy
-- **Precise color unmixing** - Uses least-squares optimization for accurate color separation
+- **Background color detection** - Automatically detects background color from image edges
+- **Foreground color deduction** - Can automatically find unknown foreground colors using the `auto` keyword
 - **Flexible modes** - Strict mode for exact color matching, or non-strict mode for more natural transparency
+- **Opacity optimization** - Intelligently optimizes opacity based on mode and colors
+- **Precise color unmixing** - Uses least-squares optimization for accurate color separation
+
+## Installation
+
+### Using Homebrew (macOS/Linux)
+
+```bash
+brew tap benface/bgone
+brew install bgone
+```
+
+### Using Cargo
+
+```bash
+cargo install bgone
+```
 
 ## Usage
 
@@ -22,16 +37,16 @@ In non-strict mode, bgone can use any color needed to perfectly reconstruct the 
 # Remove background without specifying foreground colors
 bgone input.png output.png
 
-# With specific foreground colors - optimizes for high opacity when pixels match these colors
+# With specific foreground color - optimizes for high opacity when pixels match this color (within a threshold)
 bgone input.png output.png --fg=#ff0000
 
 # With specific background color - overrides automatic detection
-bgone input.png output.png --fg=#ff0000 --bg=#ffffff
+bgone input.png output.png --bg=#ffffff
 
 # Multiple foreground colors
 bgone input.png output.png --fg ff0000 00ff00 0000ff
 
-# Automatic color deduction - finds unknown colors
+# Foreground color deduction - uses a known amount of unknown colors
 bgone input.png output.png --fg auto
 bgone input.png output.png --fg auto auto --bg ffffff
 
@@ -49,7 +64,7 @@ bgone input.png output.png -f f00 0f0 00f -b fff -t 0.1
 Strict mode restricts unmixing to only the specified foreground colors, ensuring exact color matching.
 
 ```bash
-# Strict mode requires --fg, but supports both known colors and 'auto'
+# Strict mode requires --fg, but supports both known and unknown colors
 bgone input.png output.png --strict --fg=#ff0000
 bgone input.png output.png --strict --fg auto
 bgone input.png output.png --strict --fg ff0000 auto
@@ -72,15 +87,15 @@ bgone input.png output.png --fg ff0000 0f0 00f --bg fff
 
 - `input` - Path to the input image
 - `output` - Path for the output image
-- `-f, --fg COLOR...` - Foreground colors in hex format (e.g., `f00`, `ff0000`, `#ff0000`) or `auto` for automatic deduction
+- `-f, --fg COLOR...` - Foreground colors in hex format (e.g., `f00`, `ff0000`, `#ff0000`) or `auto` to deduce unknown colors
   - Optional in non-strict mode
   - Required in strict mode
 - `-b, --bg COLOR` - Background color in hex format
   - If not specified, automatically detects the background color
 - `-s, --strict` - Enable strict mode (requires `--fg` and restricts to specified colors only)
 - `-t, --threshold FLOAT` - Color similarity threshold (0.0-1.0, default: 0.05)
-  - When using `--fg auto`: colors within this threshold are considered similar during deduction
-  - When using any `--fg` in non-strict mode: pixels within this threshold of a foreground color will use that color
+  - When using one or multiple `auto` foreground colors: colors within this threshold are considered similar during deduction
+  - When using any `--fg` in non-strict mode: pixels within this threshold of a (known or deduced) foreground color will use that color
 - `-h, --help` - Print help information
 - `-v, --version` - Print version information
 
@@ -90,7 +105,7 @@ The tool uses a color unmixing algorithm to determine how much of each foregroun
 
 ### Non-Strict Mode (Default)
 
-- **Without foreground colors**: Finds the optimal color and transparency for each pixel to perfectly reconstruct the image. Uses the minimum transparency needed for each pixel.
+- **Without foreground colors**: Finds the optimal color and transparency for each pixel to perfectly reconstruct the image. Uses the maximum transparency (minimum opacity) possible for each pixel.
 - **With foreground colors**:
   - Pixels within the threshold distance (default: 5%) of specified foreground colors use those colors with high opacity
   - Other pixels (like glows, shadows, or gradients) can use ANY color needed for perfect reconstruction
@@ -103,7 +118,7 @@ The tool uses a color unmixing algorithm to determine how much of each foregroun
 - Optimizes for maximum opacity while maintaining exact color accuracy
 - Best for images with known, specific foreground colors
 
-### Automatic Color Deduction
+### Foreground Color Deduction
 
 When using the `auto` keyword, bgone:
 
@@ -120,7 +135,7 @@ src/
 ├── lib.rs         # Main image processing logic
 ├── color.rs       # Color types and utilities
 ├── background.rs  # Background detection
-├── deduce.rs      # Automatic color deduction
+├── deduce.rs      # Foreground color deduction
 └── unmix.rs       # Color unmixing algorithm
 ```
 
@@ -158,11 +173,13 @@ The project includes a comprehensive testing framework that validates the color 
 # Run all tests
 cargo test -- --nocapture
 
-# Generate test fixtures (only needed once)
-cargo test --test generate_fixtures -- --ignored
+# Generate test inputs (only needed once)
+cargo test --test generate_inputs -- --ignored
 
-# Run integration tests with output
-cargo test --test integration_test -- --nocapture
+# Run specific test suites
+cargo test --test strict_tests -- --nocapture
+cargo test --test non_strict_tests -- --nocapture
+cargo test --test color_deduction_tests -- --nocapture
 ```
 
 ### Test Results
@@ -177,5 +194,5 @@ PSNR values above 40 dB indicate excellent quality reconstruction.
 ### Test Coverage
 
 - **Unit tests**: Cover color parsing, normalization, background detection, color unmixing algorithm, and image overlaying
-- **Integration tests**: Test the full CLI workflow including auto-background detection
+- **Integration tests**: Comprehensive tests for strict mode, non-strict mode, and color deduction
 - **Validation approach**: Process image → overlay on background → compare with original

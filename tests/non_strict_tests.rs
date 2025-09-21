@@ -2,8 +2,10 @@ mod common;
 
 use assert_cmd::Command;
 use bgone::process_image;
-use bgone::testing::{calculate_psnr, calculate_similarity_percentage, overlay_on_background};
-use common::{ensure_output_dir, save_test_images};
+use common::{
+    calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
+    save_test_images,
+};
 use image::{DynamicImage, Rgba, RgbaImage};
 use tempfile::TempDir;
 
@@ -16,7 +18,7 @@ fn test_non_strict_mode_no_fg() {
     // Test non-strict mode without any foreground colors
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/three_gradients_on_white.png",
+        "tests/inputs/three_gradients_on_white.png",
         output_path.to_str().unwrap(),
         "--bg",
         "#ffffff",
@@ -25,7 +27,7 @@ fn test_non_strict_mode_no_fg() {
     cmd.assert().success();
 
     // Load and save images for inspection
-    let original = image::open("tests/fixtures/three_gradients_on_white.png").unwrap();
+    let original = image::open("tests/inputs/three_gradients_on_white.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [255, 255, 255]);
 
@@ -56,7 +58,7 @@ fn test_non_strict_mode_with_fg() {
     // Test non-strict mode with red foreground color
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/red_with_purple_glow.png",
+        "tests/inputs/red_with_purple_glow.png",
         output_path.to_str().unwrap(),
         "--fg",
         "#ff0000",
@@ -67,7 +69,7 @@ fn test_non_strict_mode_with_fg() {
     cmd.assert().success();
 
     // Load and save images for inspection
-    let original = image::open("tests/fixtures/red_with_purple_glow.png").unwrap();
+    let original = image::open("tests/inputs/red_with_purple_glow.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [0, 0, 0]);
 

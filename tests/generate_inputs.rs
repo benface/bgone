@@ -1,5 +1,5 @@
-//! Generate test fixtures for integration tests
-//! Run with: cargo test --test generate_fixtures -- --ignored
+//! Generate test inputs for integration tests
+//! Run with: cargo test --test generate_inputs -- --ignored
 
 use image::{Rgba, RgbaImage};
 use std::path::Path;
@@ -7,8 +7,8 @@ use std::path::Path;
 #[test]
 #[ignore]
 fn generate_test_images() {
-    let fixtures_dir = Path::new("tests/fixtures");
-    std::fs::create_dir_all(fixtures_dir).unwrap();
+    let inputs_dir = Path::new("tests/inputs");
+    std::fs::create_dir_all(inputs_dir).unwrap();
 
     // Test case 1: Red square on black background
     generate_red_on_black();
@@ -28,7 +28,7 @@ fn generate_test_images() {
     // Test case 6: Gradient rectangle on dark background
     generate_gradient_rect_on_dark();
 
-    println!("Test fixtures generated in tests/fixtures/");
+    println!("Test inputs generated in tests/inputs/");
 }
 
 fn generate_red_on_black() {
@@ -46,7 +46,7 @@ fn generate_red_on_black() {
         }
     }
 
-    img.save("tests/fixtures/red_on_black.png").unwrap();
+    img.save("tests/inputs/red_on_black.png").unwrap();
 }
 
 fn generate_red_gradient_on_white() {
@@ -67,8 +67,7 @@ fn generate_red_gradient_on_white() {
         }
     }
 
-    img.save("tests/fixtures/red_gradient_on_white.png")
-        .unwrap();
+    img.save("tests/inputs/red_gradient_on_white.png").unwrap();
 }
 
 fn generate_multicolor_on_blue() {
@@ -117,7 +116,7 @@ fn generate_multicolor_on_blue() {
         }
     }
 
-    img.save("tests/fixtures/multicolor_on_blue.png").unwrap();
+    img.save("tests/inputs/multicolor_on_blue.png").unwrap();
 }
 
 fn generate_red_with_purple_glow() {
@@ -172,7 +171,7 @@ fn generate_red_with_purple_glow() {
         }
     }
 
-    img.save("tests/fixtures/red_with_purple_glow.png").unwrap();
+    img.save("tests/inputs/red_with_purple_glow.png").unwrap();
 }
 
 fn generate_three_gradients_on_white() {
@@ -256,7 +255,7 @@ fn generate_three_gradients_on_white() {
         }
     }
 
-    img.save("tests/fixtures/three_gradients_on_white.png")
+    img.save("tests/inputs/three_gradients_on_white.png")
         .unwrap();
 }
 
@@ -299,6 +298,5 @@ fn generate_gradient_rect_on_dark() {
         }
     }
 
-    img.save("tests/fixtures/gradient_rect_on_dark.png")
-        .unwrap();
+    img.save("tests/inputs/gradient_rect_on_dark.png").unwrap();
 }

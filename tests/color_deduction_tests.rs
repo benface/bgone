@@ -3,9 +3,11 @@ mod common;
 use assert_cmd::Command;
 use bgone::color::ForegroundColorSpec;
 use bgone::deduce::deduce_unknown_colors;
-use bgone::testing::{calculate_psnr, calculate_similarity_percentage, overlay_on_background};
 use bgone::unmix::{compute_result_color, unmix_colors};
-use common::{ensure_output_dir, save_test_images};
+use common::{
+    calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
+    save_test_images,
+};
 use predicates;
 use tempfile::TempDir;
 
@@ -18,7 +20,7 @@ fn test_color_deduction_single_unknown() {
     // Run bgone with one known and one unknown color
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/red_with_purple_glow.png",
+        "tests/inputs/red_with_purple_glow.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -36,7 +38,7 @@ fn test_color_deduction_single_unknown() {
     assert!(output_str.contains("Deduced"));
 
     // Load and save images for inspection
-    let original = image::open("tests/fixtures/red_with_purple_glow.png").unwrap();
+    let original = image::open("tests/inputs/red_with_purple_glow.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [0, 0, 0]);
 
@@ -132,7 +134,7 @@ fn test_color_deduction_error_cases() {
     // Test: Only 'auto' specified without any known colors - should work in strict mode
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/red_on_black.png",
+        "tests/inputs/red_on_black.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -151,7 +153,7 @@ fn test_mixed_known_and_unknown_colors() {
     // Run bgone with mix of known and unknown colors
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/multicolor_on_blue.png",
+        "tests/inputs/multicolor_on_blue.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -176,7 +178,7 @@ fn test_multiple_unknown_colors_convergence() {
     // Test that multiple unknowns don't all converge to black
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/three_gradients_on_white.png",
+        "tests/inputs/three_gradients_on_white.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -241,7 +243,7 @@ fn test_multiple_unknown_colors_convergence() {
     );
 
     // Load and save images for inspection
-    let original = image::open("tests/fixtures/three_gradients_on_white.png").unwrap();
+    let original = image::open("tests/inputs/three_gradients_on_white.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [255, 255, 255]);
 
@@ -266,7 +268,7 @@ fn test_three_gradients_with_known_red() {
     // Test with red as known color - should deduce green and blue
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/three_gradients_on_white.png",
+        "tests/inputs/three_gradients_on_white.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -360,7 +362,7 @@ fn test_three_gradients_with_known_green() {
     // Test with green as known color - should deduce red and blue
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/three_gradients_on_white.png",
+        "tests/inputs/three_gradients_on_white.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -454,7 +456,7 @@ fn test_three_gradients_with_known_blue() {
     // Test with blue as known color - should deduce red and green
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/three_gradients_on_white.png",
+        "tests/inputs/three_gradients_on_white.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -541,7 +543,7 @@ fn test_gradient_rect_auto_deduction() {
     // Test with auto color deduction - should maximize opacity
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/gradient_rect_on_dark.png",
+        "tests/inputs/gradient_rect_on_dark.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -572,7 +574,7 @@ fn test_gradient_rect_auto_deduction() {
     }
 
     // Load and save images for inspection
-    let original = image::open("tests/fixtures/gradient_rect_on_dark.png").unwrap();
+    let original = image::open("tests/inputs/gradient_rect_on_dark.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [20, 25, 30]);
 
@@ -607,7 +609,7 @@ fn test_gradient_rect_with_known_magenta() {
     // Test with known magenta (slightly different) and auto cyan
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/gradient_rect_on_dark.png",
+        "tests/inputs/gradient_rect_on_dark.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -629,7 +631,7 @@ fn test_gradient_rect_with_known_magenta() {
     println!("Output with known magenta:\n{}", output_str);
 
     // Check similarity is still acceptable
-    let original = image::open("tests/fixtures/gradient_rect_on_dark.png").unwrap();
+    let original = image::open("tests/inputs/gradient_rect_on_dark.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [20, 25, 30]);
 
@@ -663,7 +665,7 @@ fn test_gradient_rect_with_known_cyan() {
     // Test with known cyan (slightly different) and auto magenta
     let mut cmd = Command::cargo_bin("bgone").unwrap();
     cmd.args(&[
-        "tests/fixtures/gradient_rect_on_dark.png",
+        "tests/inputs/gradient_rect_on_dark.png",
         output_path.to_str().unwrap(),
         "--strict",
         "--fg",
@@ -685,7 +687,7 @@ fn test_gradient_rect_with_known_cyan() {
     println!("Output with known cyan:\n{}", output_str);
 
     // Check similarity is still acceptable
-    let original = image::open("tests/fixtures/gradient_rect_on_dark.png").unwrap();
+    let original = image::open("tests/inputs/gradient_rect_on_dark.png").unwrap();
     let processed = image::open(&output_path).unwrap();
     let reconstructed = overlay_on_background(&processed, [20, 25, 30]);
 
