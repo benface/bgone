@@ -37,13 +37,13 @@ In non-strict mode, bgone can use any color needed to perfectly reconstruct the 
 # Remove background without specifying foreground colors
 bgone input.png output.png
 
-# With specific foreground color - optimizes for high opacity when pixels match this color (within a threshold)
-bgone input.png output.png --fg=#ff0000
-
-# With specific background color - overrides automatic detection
+# With background color - overrides automatic detection
 bgone input.png output.png --bg=#ffffff
 
-# Multiple foreground colors
+# With foreground color - optimizes for high opacity when pixels match this color (within a threshold)
+bgone input.png output.png --fg=#ff0000
+
+# Multiple foreground colors - output pixels can be any mix of these colors
 bgone input.png output.png --fg ff0000 00ff00 0000ff
 
 # Foreground color deduction - uses a known amount of unknown colors
