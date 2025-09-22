@@ -129,17 +129,44 @@ When using the `auto` keyword, bgone:
 3. Evaluates different color combinations to find the best match
 4. Optimizes for maximum opacity while preserving exact color accuracy
 
-## Project Structure
+## Use Cases & Limitations
 
-```
-src/
-├── main.rs        # CLI entry point
-├── lib.rs         # Main image processing logic
-├── color.rs       # Color types and utilities
-├── background.rs  # Background detection
-├── deduce.rs      # Foreground color deduction
-└── unmix.rs       # Color unmixing algorithm
-```
+### When to Use bgone
+
+- **Digital graphics**: Logos, icons, illustrations with solid backgrounds
+- **UI/UX assets**: Interface elements, buttons, mockup components
+- **Text and shapes**: Any content on uniform color backgrounds
+
+### Limitations
+
+bgone works best with:
+
+- **Solid, uniform background colors**
+- **Few foreground colors** (1 is ideal, 2-3 is good)
+- **Clear distinction between foreground and background**
+
+bgone may struggle with:
+
+- **Similar foreground/background colors**: Depending on mode and number of foreground colors
+- **Anti-aliased edges or complex transparency effects**: Results vary with complexity
+
+bgone will struggle with:
+
+- **Non-solid backgrounds**: Cannot handle gradients, textures, or patterns
+- **Photography**: Photos rarely have truly solid backgrounds, and can have thousands of colors in the foreground
+- **JPEG artifacts**: Compression artifacts interfere with clean color separation, and will be visible in the output
+- **Multiple blended foreground colors**: Quality degrades with complex color mixing
+- **Images with alpha channels**: bgone assumes fully opaque input images
+
+### Tips for Best Results
+
+- Use non-transparent PNG or lossless formats for input images
+- Manually specify the background color with `--bg` for best accuracy
+- Experiment with `--threshold` for fine-tuning edge detection
+- Use `auto` only for foreground colors that aren't directly visible in the image but can recreate existing colors when blended with the background
+- When using `auto` with gradients or shades, pair it with white or black:
+  - `--fg fff auto` for images with mostly light tones
+  - `--fg 000 auto` for images with mostly dark tones
 
 ## Building
 
@@ -184,15 +211,35 @@ cargo test --release --test generate_inputs -- --ignored
 
 ### Test Results
 
-The algorithm achieves excellent results:
+The algorithm achieves excellent results across different test scenarios:
 
 - **Simple cases** (solid colors): 100% similarity, infinite PSNR
-- **Complex cases** (gradients, multiple colors): 100% similarity, >50 dB PSNR
+- **Complex cases** (gradients, glows): 94-99% similarity, 47-65 dB PSNR
+- **Color deduction**: 98-99% similarity, achieving optimal color separation
 
 PSNR values above 40 dB indicate excellent quality reconstruction.
 
 ### Test Coverage
 
 - **Unit tests**: Cover color parsing, normalization, background detection, color unmixing algorithm, and image overlaying
-- **Integration tests**: Comprehensive tests for strict mode, non-strict mode, and color deduction
+- **Integration tests**:
+  - **Strict mode tests**: Solid colors, gradients, multi-color scenes, auto-detection
+  - **Non-strict mode tests**: With and without foreground colors, edge cases, alpha optimization
+  - **Color deduction tests**: Single/multiple unknowns, mixed known/unknown colors, gradient deduction
+  - **Square gradient stroke tests**: Various threshold and mode combinations
+  - **Translucent recovery tests**: Complex fire effects on different backgrounds
 - **Validation approach**: Process image → overlay on background → compare with original
+
+## Contributing
+
+This project was entirely ✨vibe coded✨ - built with Claude Code with very little care about the actual code output. As a result, the codebase may have quirks, bugs, or unconventional patterns.
+
+Contributions are welcome! Feel free to:
+
+- Report bugs or suggest features through issues
+- Submit PRs with improvements or optimizations
+- Add more test cases
+- Fix any AI-generated weirdness you find
+- Share your use cases
+
+Thank you!
