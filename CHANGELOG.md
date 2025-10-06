@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.3.0] - 2025-10-06
+
+### Added
+- Optional output argument: automatically generates output filename with `-bgone` suffix when not specified
+- Auto-incremental naming: appends `-bgone-1`, `-bgone-2`, etc. when file already exists
+- Comprehensive unit tests for output path generation logic
+
+### Changed
+- Output argument is now optional in CLI (defaults to `<input>-bgone.<ext>`)
+- Updated all documentation and usage examples to reflect optional output
+- Simplified common usage pattern: `bgone input.png` instead of `bgone input.png output.png`
+
 ## [0.2.0] - 2024-09-21
 
 ### Added
