@@ -307,13 +307,14 @@ fn test_auto_deduction_finds_optimal_colors() {
                 deduced_colors.extend(colors);
             }
         } else if line.contains("Deduced 3 unknown colors:")
-            && let Some(color_part) = line.split(':').nth(1) {
-                deduced_colors = color_part
-                    .split_whitespace()
-                    .map(|s| s.to_string())
-                    .collect();
-                break;
-            }
+            && let Some(color_part) = line.split(':').nth(1)
+        {
+            deduced_colors = color_part
+                .split_whitespace()
+                .map(|s| s.to_string())
+                .collect();
+            break;
+        }
     }
 
     println!("Deduced colors: {:?}", deduced_colors);

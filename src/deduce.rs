@@ -1,4 +1,4 @@
-use crate::color::{normalize_color, Color, ForegroundColorSpec, NormalizedColor};
+use crate::color::{Color, ForegroundColorSpec, NormalizedColor, normalize_color};
 use crate::unmix::{compute_result_color, unmix_colors_internal};
 use anyhow::Result;
 use image::DynamicImage;
@@ -128,7 +128,7 @@ fn select_most_different_colors(colors: &[Color], n: usize) -> Vec<Color> {
                     max - min // Saturation
                 } else {
                     // Otherwise pick the one most different from selected colors
-                    
+
                     selected
                         .iter()
                         .map(|s| {

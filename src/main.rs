@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 
 use bgone::{
     background::detect_background_color,
-    color::{parse_foreground_spec, parse_hex_color, Color, ForegroundColorSpec},
+    color::{Color, ForegroundColorSpec, parse_foreground_spec, parse_hex_color},
     deduce::deduce_unknown_colors,
     process_image, unmix,
 };
@@ -107,9 +107,10 @@ fn main() -> Result<()> {
 
     // Validate threshold if provided
     if let Some(threshold) = args.threshold
-        && (!(0.0..=1.0).contains(&threshold)) {
-            anyhow::bail!("Threshold must be between 0.0 and 1.0, got: {}", threshold);
-        }
+        && (!(0.0..=1.0).contains(&threshold))
+    {
+        anyhow::bail!("Threshold must be between 0.0 and 1.0, got: {}", threshold);
+    }
 
     // Process the image
     process_image(
