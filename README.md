@@ -37,28 +37,32 @@ In non-strict mode, bgone can use any color needed to perfectly reconstruct the 
 
 ```bash
 # Fully automatic - detects the background and removes it
+# Output defaults to input-bgone.png (or input-bgone-1.png if that exists, etc.)
+bgone input.png
+
+# Specify output path
 bgone input.png output.png
 
 # With background color - overrides automatic detection
 bgone input.png output.png --bg=#ffffff
 
 # With foreground color - optimizes for high opacity when pixels match this color (within a threshold)
-bgone input.png output.png --fg=#ff0000
+bgone input.png --fg=#ff0000
 
 # Multiple foreground colors - output pixels can be any mix of these colors
-bgone input.png output.png --fg ff0000 00ff00 0000ff
+bgone input.png --fg ff0000 00ff00 0000ff
 
 # Foreground color deduction - uses a known amount of unknown colors
-bgone input.png output.png --fg auto
-bgone input.png output.png --fg auto auto --bg ffffff
+bgone input.png --fg auto
+bgone input.png --fg auto auto --bg ffffff
 
 # Mix known and unknown colors
-bgone input.png output.png --fg ff0000 auto
+bgone input.png --fg ff0000 auto
 
 # Using shorthand notation
-bgone input.png output.png -f f00 -b fff
-bgone input.png output.png -f auto -s
-bgone input.png output.png -f f00 0f0 00f -b fff -t 0.1
+bgone input.png -f f00 -b fff
+bgone input.png -f auto -s
+bgone input.png -f f00 0f0 00f -b fff -t 0.1
 ```
 
 ### Strict Mode
@@ -67,28 +71,30 @@ Strict mode restricts unmixing to only the specified foreground colors, ensuring
 
 ```bash
 # Strict mode requires --fg, but supports both known and unknown colors
-bgone input.png output.png --strict --fg=#ff0000
-bgone input.png output.png --strict --fg auto
-bgone input.png output.png --strict --fg ff0000 auto
+bgone input.png --strict --fg=#ff0000
+bgone input.png --strict --fg auto
+bgone input.png --strict --fg ff0000 auto
 
 # With specific background color
-bgone input.png output.png --strict --fg=#f00 --bg=#fff
+bgone input.png --strict --fg=#f00 --bg=#fff
 ```
 
 ### Additional Examples
 
 ```bash
 # Multiple colors with # prefix still works, but requires quotes in shell
-bgone input.png output.png --fg "#f00" "#0f0" "#00f"
+bgone input.png --fg "#f00" "#0f0" "#00f"
 
 # Mix of shorthand and full notation
-bgone input.png output.png --fg ff0000 0f0 00f --bg fff
+bgone input.png --fg ff0000 0f0 00f --bg fff
 ```
 
 ## CLI Options
 
 - `input` - Path to the input image
-- `output` - Path for the output image
+- `output` - (Optional) Path for the output image
+  - If not specified, outputs to `<input>-bgone.<ext>` in the same directory
+  - If that file exists, automatically increments to `<input>-bgone-1.<ext>`, `<input>-bgone-2.<ext>`, etc.
 - `-f, --fg COLOR...` - Foreground colors in hex format (e.g., `f00`, `ff0000`, `#ff0000`) or `auto` to deduce unknown colors
   - Optional in non-strict mode
   - Required in strict mode
@@ -179,7 +185,7 @@ cargo build --release
 You can test the tool without installing it using `cargo run`:
 
 ```bash
-cargo run --release -- input.png output.png --fg ff0000
+cargo run --release -- input.png --fg ff0000
 ```
 
 The `--` separates cargo's arguments from bgone's arguments.

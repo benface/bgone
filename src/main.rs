@@ -1,7 +1,7 @@
 use anyhow::{Context, Result};
 use clap::Parser;
 use indicatif::{ProgressBar, ProgressStyle};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use bgone::{
     background::detect_background_color,
@@ -21,8 +21,8 @@ struct Args {
     /// Input image path
     input: PathBuf,
 
-    /// Output image path
-    output: PathBuf,
+    /// Output image path (optional, defaults to input file with -bgone suffix)
+    output: Option<PathBuf>,
 
     /// Foreground colors in hex format (e.g., f00, ff0000, #ff0000) or 'auto' for unknown.
     /// Multiple colors can be specified for color unmixing.
@@ -60,6 +60,9 @@ fn main() -> Result<()> {
     if args.strict && args.foreground_colors.is_empty() {
         anyhow::bail!("In strict mode, at least one foreground color must be specified with --fg");
     }
+
+    // Determine output path
+    let output_path = determine_output_path(&args.input, args.output.as_deref())?;
 
     // Parse foreground color specifications (if any)
     let foreground_specs = if args.foreground_colors.is_empty() {
@@ -112,7 +115,7 @@ fn main() -> Result<()> {
     // Process the image
     process_image(
         &args.input,
-        &args.output,
+        &output_path,
         foreground_colors,
         background_color,
         args.strict,
@@ -120,6 +123,43 @@ fn main() -> Result<()> {
     )?;
 
     Ok(())
+}
+
+/// Determine the output path for the processed image
+///
+/// If output is provided, use it as-is.
+/// If output is None, generate a filename based on the input with a -bgone suffix.
+/// If that file already exists, append -1, -2, etc. until we find an available filename.
+fn determine_output_path(input: &Path, output: Option<&Path>) -> Result<PathBuf> {
+    if let Some(output) = output {
+        return Ok(output.to_path_buf());
+    }
+
+    // Generate output filename from input
+    let input_stem = input
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .context("Invalid input filename")?;
+
+    let input_ext = input.extension().and_then(|s| s.to_str()).unwrap_or("png");
+
+    let parent = input.parent().unwrap_or_else(|| Path::new("."));
+
+    // Try base name first
+    let base_output = parent.join(format!("{}-bgone.{}", input_stem, input_ext));
+    if !base_output.exists() {
+        return Ok(base_output);
+    }
+
+    // If base name exists, try with incrementing numbers
+    for i in 1..1000 {
+        let numbered_output = parent.join(format!("{}-bgone-{}.{}", input_stem, i, input_ext));
+        if !numbered_output.exists() {
+            return Ok(numbered_output);
+        }
+    }
+
+    anyhow::bail!("Could not generate unique output filename (tried up to -bgone-999)")
 }
 
 /// Parse and validate foreground color specifications from command line arguments
@@ -167,5 +207,94 @@ fn determine_background_color(args: &Args) -> Result<Color> {
         );
 
         Ok(detected)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+    use tempfile::TempDir;
+
+    #[test]
+    fn test_determine_output_path_explicit() {
+        let input = Path::new("/some/path/input.png");
+        let output = Path::new("/other/path/output.png");
+
+        let result = determine_output_path(input, Some(output)).unwrap();
+        assert_eq!(result, output);
+    }
+
+    #[test]
+    fn test_determine_output_path_auto_base() {
+        let temp_dir = TempDir::new().unwrap();
+        let input_path = temp_dir.path().join("test.png");
+
+        // Create input file
+        fs::write(&input_path, b"fake image data").unwrap();
+
+        let result = determine_output_path(&input_path, None).unwrap();
+        assert_eq!(result, temp_dir.path().join("test-bgone.png"));
+    }
+
+    #[test]
+    fn test_determine_output_path_auto_incremental() {
+        let temp_dir = TempDir::new().unwrap();
+        let input_path = temp_dir.path().join("test.png");
+
+        // Create input file and first output file
+        fs::write(&input_path, b"fake image data").unwrap();
+        fs::write(temp_dir.path().join("test-bgone.png"), b"existing").unwrap();
+
+        let result = determine_output_path(&input_path, None).unwrap();
+        assert_eq!(result, temp_dir.path().join("test-bgone-1.png"));
+    }
+
+    #[test]
+    fn test_determine_output_path_auto_multiple_increments() {
+        let temp_dir = TempDir::new().unwrap();
+        let input_path = temp_dir.path().join("test.png");
+
+        // Create input file and multiple output files
+        fs::write(&input_path, b"fake image data").unwrap();
+        fs::write(temp_dir.path().join("test-bgone.png"), b"existing").unwrap();
+        fs::write(temp_dir.path().join("test-bgone-1.png"), b"existing").unwrap();
+        fs::write(temp_dir.path().join("test-bgone-2.png"), b"existing").unwrap();
+
+        let result = determine_output_path(&input_path, None).unwrap();
+        assert_eq!(result, temp_dir.path().join("test-bgone-3.png"));
+    }
+
+    #[test]
+    fn test_determine_output_path_preserves_extension() {
+        let temp_dir = TempDir::new().unwrap();
+        let input_path = temp_dir.path().join("image.jpg");
+
+        fs::write(&input_path, b"fake image data").unwrap();
+
+        let result = determine_output_path(&input_path, None).unwrap();
+        assert_eq!(result, temp_dir.path().join("image-bgone.jpg"));
+    }
+
+    #[test]
+    fn test_determine_output_path_no_extension() {
+        let temp_dir = TempDir::new().unwrap();
+        let input_path = temp_dir.path().join("image");
+
+        fs::write(&input_path, b"fake image data").unwrap();
+
+        let result = determine_output_path(&input_path, None).unwrap();
+        assert_eq!(result, temp_dir.path().join("image-bgone.png"));
+    }
+
+    #[test]
+    fn test_determine_output_path_complex_filename() {
+        let temp_dir = TempDir::new().unwrap();
+        let input_path = temp_dir.path().join("my-image-2024.png");
+
+        fs::write(&input_path, b"fake image data").unwrap();
+
+        let result = determine_output_path(&input_path, None).unwrap();
+        assert_eq!(result, temp_dir.path().join("my-image-2024-bgone.png"));
     }
 }
