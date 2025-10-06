@@ -92,9 +92,12 @@ bgone input.png --fg ff0000 0f0 00f --bg fff
 ## CLI Options
 
 - `input` - Path to the input image
+  - Supports many formats: PNG, JPEG, WebP, TIFF, GIF, BMP, ICO, and more
 - `output` - (Optional) Path for the output image
-  - If not specified, outputs to `<input>-bgone.<ext>` in the same directory
-  - If that file exists, automatically increments to `<input>-bgone-1.<ext>`, `<input>-bgone-2.<ext>`, etc.
+  - If not specified, automatically generates filename with `-bgone` suffix
+  - Output format is determined by file extension
+  - For formats without alpha support (JPEG, BMP, etc.), automatically converts to PNG
+  - For formats with alpha support (PNG, WebP, TIFF, GIF), preserves the format
 - `-f, --fg COLOR...` - Foreground colors in hex format (e.g., `f00`, `ff0000`, `#ff0000`) or `auto` to deduce unknown colors
   - Optional in non-strict mode
   - Required in strict mode
@@ -106,6 +109,43 @@ bgone input.png --fg ff0000 0f0 00f --bg fff
   - When using any `--fg` in non-strict mode: pixels within this threshold of a (known or deduced) foreground color will use that color
 - `-h, --help` - Print help information
 - `-v, --version` - Print version information
+
+## Supported Formats
+
+### Input Formats
+bgone can read images in many formats, including:
+- PNG, JPEG, GIF, WebP, TIFF, BMP, ICO, TGA, DDS, HDR, OpenEXR, QOI, and more
+
+### Output Formats
+The output format is determined by the file extension:
+
+**Formats with alpha channel support** (preserved):
+- **PNG** - Recommended for most use cases
+- **WebP** - Modern format with good compression
+- **TIFF/TIF** - Professional/archival use
+- **GIF** - For animations (though bgone only processes single frames)
+- **QOI** - Fast, lossless format
+- **OpenEXR** - HDR images
+
+**Formats without alpha support** (automatically converted to PNG):
+- **JPEG/JPG** - No transparency support → outputs as PNG
+- **BMP** - No transparency support → outputs as PNG
+- All other formats without alpha → outputs as PNG
+
+### Examples
+```bash
+# JPEG input → PNG output (with transparency)
+bgone photo.jpg  # Creates photo-bgone.png
+
+# PNG input → PNG output
+bgone logo.png  # Creates logo-bgone.png
+
+# WebP input → WebP output
+bgone image.webp  # Creates image-bgone.webp
+
+# Explicit format control
+bgone photo.jpg output.webp  # Force WebP output
+```
 
 ## How it works
 
@@ -166,7 +206,8 @@ bgone will struggle with:
 
 ### Tips for Best Results
 
-- Use non-transparent PNG or lossless formats for input images
+- **Use PNG or lossless formats** for input images to avoid compression artifacts
+- **Avoid JPEG input** when possible - compression artifacts will be visible in the output (though bgone will automatically convert the output to PNG)
 - Manually specify the background color with `--bg` for best accuracy
 - Experiment with `--threshold` for fine-tuning edge detection
 - Use `auto` only for foreground colors that aren't directly visible in the image but can recreate existing colors when blended with the background

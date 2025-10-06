@@ -141,19 +141,31 @@ fn determine_output_path(input: &Path, output: Option<&Path>) -> Result<PathBuf>
         .and_then(|s| s.to_str())
         .context("Invalid input filename")?;
 
-    let input_ext = input.extension().and_then(|s| s.to_str()).unwrap_or("png");
+    let input_ext = input
+        .extension()
+        .and_then(|s| s.to_str())
+        .map(|s| s.to_lowercase())
+        .unwrap_or_else(|| "png".to_string());
+
+    // Determine output extension: use PNG for formats that don't support alpha
+    let output_ext = match input_ext.as_str() {
+        // Formats that support alpha channels
+        "png" | "webp" | "tiff" | "tif" | "gif" | "qoi" | "exr" => input_ext,
+        // Formats without alpha support -> convert to PNG
+        _ => "png".to_string(),
+    };
 
     let parent = input.parent().unwrap_or_else(|| Path::new("."));
 
     // Try base name first
-    let base_output = parent.join(format!("{}-bgone.{}", input_stem, input_ext));
+    let base_output = parent.join(format!("{}-bgone.{}", input_stem, output_ext));
     if !base_output.exists() {
         return Ok(base_output);
     }
 
     // If base name exists, try with incrementing numbers
     for i in 1..1000 {
-        let numbered_output = parent.join(format!("{}-bgone-{}.{}", input_stem, i, input_ext));
+        let numbered_output = parent.join(format!("{}-bgone-{}.{}", input_stem, i, output_ext));
         if !numbered_output.exists() {
             return Ok(numbered_output);
         }
@@ -266,14 +278,27 @@ mod tests {
     }
 
     #[test]
-    fn test_determine_output_path_preserves_extension() {
+    fn test_determine_output_path_converts_jpeg_to_png() {
         let temp_dir = TempDir::new().unwrap();
         let input_path = temp_dir.path().join("image.jpg");
 
         fs::write(&input_path, b"fake image data").unwrap();
 
         let result = determine_output_path(&input_path, None).unwrap();
-        assert_eq!(result, temp_dir.path().join("image-bgone.jpg"));
+        // JPEG doesn't support alpha, so output should be PNG
+        assert_eq!(result, temp_dir.path().join("image-bgone.png"));
+    }
+
+    #[test]
+    fn test_determine_output_path_preserves_alpha_format() {
+        let temp_dir = TempDir::new().unwrap();
+        let input_path = temp_dir.path().join("image.webp");
+
+        fs::write(&input_path, b"fake image data").unwrap();
+
+        let result = determine_output_path(&input_path, None).unwrap();
+        // WebP supports alpha, so preserve format
+        assert_eq!(result, temp_dir.path().join("image-bgone.webp"));
     }
 
     #[test]
