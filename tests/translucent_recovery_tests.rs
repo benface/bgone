@@ -76,7 +76,7 @@ fn test_fire_on_black_non_strict() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--bg",
@@ -127,7 +127,7 @@ fn test_fire_on_black_non_strict_single_auto() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--fg",
@@ -176,7 +176,7 @@ fn test_fire_on_black_strict_single_auto() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--strict",
@@ -228,7 +228,7 @@ fn test_fire_on_black_strict_mixed() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--strict",
@@ -284,7 +284,7 @@ fn test_fire_on_white_non_strict() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--bg",
@@ -330,7 +330,7 @@ fn test_fire_on_white_non_strict_single_auto() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--fg",
@@ -378,7 +378,7 @@ fn test_fire_on_white_strict_single_auto() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--strict",
@@ -430,7 +430,7 @@ fn test_fire_on_white_strict_mixed() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--strict",
@@ -487,7 +487,7 @@ fn test_fire_on_colored_non_strict() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--bg",
@@ -533,7 +533,7 @@ fn test_fire_on_colored_non_strict_single_auto() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--fg",
@@ -581,7 +581,7 @@ fn test_fire_on_colored_strict_single_auto() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--strict",
@@ -633,7 +633,7 @@ fn test_fire_on_colored_strict_mixed() {
     let output_path = temp_dir.path().join("output.png");
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
             "--strict",

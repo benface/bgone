@@ -128,15 +128,15 @@ fn select_most_different_colors(colors: &[Color], n: usize) -> Vec<Color> {
                     max - min // Saturation
                 } else {
                     // Otherwise pick the one most different from selected colors
-                    let min_dist = selected
+                    
+                    selected
                         .iter()
                         .map(|s| {
                             let dist = color_distance(normalize_color(color), normalize_color(*s));
                             (dist * 1000.0) as i32
                         })
                         .min()
-                        .unwrap_or(i32::MAX);
-                    min_dist
+                        .unwrap_or(i32::MAX)
                 }
             });
 

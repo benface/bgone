@@ -8,7 +8,6 @@ use common::{
     calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
     save_test_images,
 };
-use predicates;
 use tempfile::TempDir;
 
 #[test]
@@ -19,7 +18,7 @@ fn test_color_deduction_single_unknown() {
 
     // Run bgone with one known and one unknown color
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square-glow.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -102,7 +101,7 @@ fn test_color_deduction_all_unknown() {
 
     // Run bgone with all unknown colors
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         test_image_path.to_str().unwrap(),
         output_path.to_str().unwrap(),
         "--strict",
@@ -128,7 +127,7 @@ fn test_color_deduction_error_cases() {
 
     // Test: Only 'auto' specified without any known colors - should work in strict mode
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -147,7 +146,7 @@ fn test_mixed_known_and_unknown_colors() {
 
     // Run bgone with mix of known and unknown colors
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/rectangles.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -172,7 +171,7 @@ fn test_multiple_unknown_colors_convergence() {
 
     // Test that multiple unknowns don't all converge to black
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -202,7 +201,6 @@ fn test_multiple_unknown_colors_convergence() {
             // Parse colors from format: "✓ Deduced 3 unknown colors: #ff1b1b #1bff1b #1b1bff"
             if let Some(colors_part) = line.split("colors:").nth(1) {
                 deduced_colors = colors_part
-                    .trim()
                     .split_whitespace()
                     .map(|s| s.to_string())
                     .collect();
@@ -276,7 +274,7 @@ fn test_auto_deduction_finds_optimal_colors() {
     // This test checks that auto deduction finds the most saturated colors
     // (furthest from the background), not just any valid colors
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -303,22 +301,19 @@ fn test_auto_deduction_finds_optimal_colors() {
         if line.contains("Deduced unknown color") {
             if let Some(color_part) = line.split(':').nth(1) {
                 let colors: Vec<String> = color_part
-                    .trim()
                     .split_whitespace()
                     .map(|s| s.to_string())
                     .collect();
                 deduced_colors.extend(colors);
             }
-        } else if line.contains("Deduced 3 unknown colors:") {
-            if let Some(color_part) = line.split(':').nth(1) {
+        } else if line.contains("Deduced 3 unknown colors:")
+            && let Some(color_part) = line.split(':').nth(1) {
                 deduced_colors = color_part
-                    .trim()
                     .split_whitespace()
                     .map(|s| s.to_string())
                     .collect();
                 break;
             }
-        }
     }
 
     println!("Deduced colors: {:?}", deduced_colors);
@@ -360,7 +355,7 @@ fn test_circle_gradients_with_known_red() {
 
     // Test with red as known color - should deduce green and blue
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -389,7 +384,6 @@ fn test_circle_gradients_with_known_red() {
             // Parse colors from format: "✓ Deduced 2 unknown colors: #1bff1b #1b1bff"
             if let Some(colors_part) = line.split("colors:").nth(1) {
                 let deduced: Vec<String> = colors_part
-                    .trim()
                     .split_whitespace()
                     .map(|s| s.to_string())
                     .collect();
@@ -454,7 +448,7 @@ fn test_circle_gradients_with_known_green() {
 
     // Test with green as known color - should deduce red and blue
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -483,7 +477,6 @@ fn test_circle_gradients_with_known_green() {
             // Parse colors from format: "✓ Deduced 2 unknown colors: #ff1b1b #1b1bff"
             if let Some(colors_part) = line.split("colors:").nth(1) {
                 let deduced: Vec<String> = colors_part
-                    .trim()
                     .split_whitespace()
                     .map(|s| s.to_string())
                     .collect();
@@ -548,7 +541,7 @@ fn test_circle_gradients_with_known_blue() {
 
     // Test with blue as known color - should deduce red and green
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -577,7 +570,6 @@ fn test_circle_gradients_with_known_blue() {
             // Parse colors from format: "✓ Deduced 2 unknown colors: #ff1b1b #1bff1b"
             if let Some(colors_part) = line.split("colors:").nth(1) {
                 let deduced: Vec<String> = colors_part
-                    .trim()
                     .split_whitespace()
                     .map(|s| s.to_string())
                     .collect();
@@ -635,7 +627,7 @@ fn test_square_gradient_auto_deduction() {
 
     // Test with auto color deduction - should maximize opacity
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square-gradient.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -701,7 +693,7 @@ fn test_square_gradient_with_known_magenta() {
 
     // Test with known magenta (slightly different) and auto cyan
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square-gradient.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -757,7 +749,7 @@ fn test_square_gradient_with_known_cyan() {
 
     // Test with known cyan (slightly different) and auto magenta
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square-gradient.png",
         output_path.to_str().unwrap(),
         "--strict",

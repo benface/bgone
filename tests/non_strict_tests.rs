@@ -17,7 +17,7 @@ fn test_non_strict_mode_no_fg() {
 
     // Test non-strict mode without any foreground colors
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
         "--bg",
@@ -57,7 +57,7 @@ fn test_non_strict_mode_with_fg() {
 
     // Test non-strict mode with red foreground color
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square-glow.png",
         output_path.to_str().unwrap(),
         "--fg",
@@ -235,7 +235,7 @@ fn test_non_strict_alpha_minimization() {
     ensure_output_dir();
 
     // Test systematic alpha minimization across different scenarios
-    let test_cases = vec![
+    let test_cases = [
         // (observed_color, background, description)
         ([200, 200, 255, 255], [255, 255, 255], "Blue tint on white"),
         ([255, 200, 200, 255], [200, 200, 200], "Red tint on gray"),

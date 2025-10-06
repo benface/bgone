@@ -20,7 +20,7 @@ fn test_square_gradient_stroke_non_strict_no_fg() {
     // This should optimize for maximum transparency
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--bg",
@@ -70,7 +70,7 @@ fn test_square_gradient_stroke_non_strict_with_fg() {
     // Colors close to these will use high opacity, others will be flexible
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--fg",
@@ -126,7 +126,7 @@ fn test_square_gradient_stroke_strict_known_colors() {
     // This restricts the unmixing to only these specific colors
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--strict",
@@ -183,7 +183,7 @@ fn test_square_gradient_stroke_strict_auto_colors() {
     // This will find the optimal 3 colors automatically
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--strict",
@@ -240,7 +240,7 @@ fn test_square_gradient_stroke_non_strict_with_fg_high_threshold() {
     // This should make more pixels be considered "close enough" to use the known colors
     Command::cargo_bin("bgone")
         .unwrap()
-        .args(&[
+        .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
             "--fg",

@@ -5,7 +5,6 @@ use common::{
     calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
     save_test_images,
 };
-use predicates;
 use tempfile::TempDir;
 
 #[test]
@@ -16,7 +15,7 @@ fn test_square_removal() {
 
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -64,7 +63,7 @@ fn test_circle_gradient_removal() {
 
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/circle-gradient.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -112,7 +111,7 @@ fn test_rectangles_removal() {
 
     // Run bgone
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/rectangles.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -162,7 +161,7 @@ fn test_auto_background_detection() {
 
     // Run bgone without specifying background (should auto-detect black)
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -196,7 +195,7 @@ fn test_square_gradient_with_known_colors() {
 
     // Test with known cyan and magenta - should preserve transparency
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square-gradient.png",
         output_path.to_str().unwrap(),
         "--strict",
@@ -243,7 +242,7 @@ fn test_strict_mode_requires_fg() {
 
     // Test: No foreground colors specified in strict mode - should fail
     let mut cmd = Command::cargo_bin("bgone").unwrap();
-    cmd.args(&[
+    cmd.args([
         "tests/inputs/square.png",
         output_path.to_str().unwrap(),
         "--strict",

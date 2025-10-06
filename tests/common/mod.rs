@@ -94,7 +94,7 @@ pub fn compare_rgba_images(img1: &DynamicImage, img2: &DynamicImage) -> Result<f
     let rgba1 = img1.to_rgba8();
     let rgba2 = img2.to_rgba8();
 
-    match image_compare::rgba_hybrid_compare((&rgba1).into(), (&rgba2).into()) {
+    match image_compare::rgba_hybrid_compare(&rgba1, &rgba2) {
         Ok(result) => Ok(result.score),
         Err(_) => Err("Images must have same dimensions".to_string()),
     }

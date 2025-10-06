@@ -256,7 +256,7 @@ fn find_minimum_alpha_for_color(
         let fg_b = (obs_norm[2] - (1.0 - alpha) * background[2]) / alpha;
 
         // Check if this foreground color is valid (all components in [0, 1])
-        if fg_r >= 0.0 && fg_r <= 1.0 && fg_g >= 0.0 && fg_g <= 1.0 && fg_b >= 0.0 && fg_b <= 1.0 {
+        if (0.0..=1.0).contains(&fg_r) && (0.0..=1.0).contains(&fg_g) && (0.0..=1.0).contains(&fg_b) {
             best_alpha = alpha;
             best_fg = [fg_r, fg_g, fg_b];
             break; // This is the minimum alpha with direct computation
@@ -288,7 +288,7 @@ fn process_pixel_non_strict_no_fg(observed: Color, background: NormalizedColor) 
 
     // Find the optimal alpha and foreground color
     let (best_fg, best_alpha) =
-        find_minimum_alpha_for_color(obs_norm, background).unwrap_or_else(|| {
+        find_minimum_alpha_for_color(obs_norm, background).unwrap_or({
             // If we didn't find a valid solution with alpha <= 1.0, something is wrong
             // Fall back to using alpha = 1.0
             (obs_norm, 1.0)
@@ -355,7 +355,7 @@ fn process_pixel_non_strict_with_fg(
 
         // Find the optimal alpha and foreground color
         let (best_fg, best_alpha) = find_minimum_alpha_for_color(obs_norm, background)
-            .unwrap_or_else(|| {
+            .unwrap_or({
                 // If we didn't find a valid solution with alpha <= 1.0, something is wrong
                 // Fall back to using alpha = 1.0
                 (obs_norm, 1.0)
