@@ -65,9 +65,22 @@ pub fn detect_background_color_with_config(
     }
 
     // Count color occurrences
+    // For translucent pixels, composite over black to get the effective color
     for &(x, y) in &sample_points {
         let pixel = rgba.get_pixel(x, y);
-        let color = [pixel[0], pixel[1], pixel[2]];
+        let alpha = pixel[3] as f64 / 255.0;
+
+        // Composite over black background for translucent pixels
+        let color = if alpha < 1.0 {
+            [
+                (pixel[0] as f64 * alpha).round() as u8,
+                (pixel[1] as f64 * alpha).round() as u8,
+                (pixel[2] as f64 * alpha).round() as u8,
+            ]
+        } else {
+            [pixel[0], pixel[1], pixel[2]]
+        };
+
         *color_counts.entry(color).or_insert(0) += 1;
     }
 

@@ -70,7 +70,8 @@ pub fn process_image<P: AsRef<Path>>(
             .par_iter()
             .progress_with(progress.clone())
             .map(|pixel| {
-                let observed = [pixel[0], pixel[1], pixel[2]];
+                // Pre-composite translucent pixels over background to get opaque color
+                let observed = composite_pixel_over_background(pixel, background_color);
                 process_pixel_non_strict_no_fg(observed, bg_normalized)
             })
             .collect()
@@ -81,7 +82,8 @@ pub fn process_image<P: AsRef<Path>>(
             .par_iter()
             .progress_with(progress.clone())
             .map(|pixel| {
-                let observed = [pixel[0], pixel[1], pixel[2]];
+                // Pre-composite translucent pixels over background to get opaque color
+                let observed = composite_pixel_over_background(pixel, background_color);
                 process_pixel_non_strict_with_fg(
                     observed,
                     &fg_normalized,
@@ -96,7 +98,8 @@ pub fn process_image<P: AsRef<Path>>(
             .par_iter()
             .progress_with(progress.clone())
             .map(|pixel| {
-                let observed = [pixel[0], pixel[1], pixel[2]];
+                // Pre-composite translucent pixels over background to get opaque color
+                let observed = composite_pixel_over_background(pixel, background_color);
                 let unmix_result = unmix_colors(observed, &fg_normalized, bg_normalized);
                 let (result_color, alpha) = compute_result_color(&unmix_result, &fg_normalized);
 
@@ -153,6 +156,94 @@ fn create_progress_bar(total: u64) -> Result<ProgressBar> {
     );
     progress.set_message("Processing pixels...");
     Ok(progress)
+}
+
+/// Composite a pixel over a background color to handle existing alpha channels
+///
+/// If the input pixel is translucent (alpha < 255), this pre-composes it over
+/// the background color to produce an opaque equivalent. This allows bgone to
+/// correctly process images that already have transparency.
+///
+/// Formula: result = foreground * alpha + background * (1 - alpha)
+fn composite_pixel_over_background(pixel: &Rgba<u8>, background: Color) -> Color {
+    let alpha = pixel[3] as f64 / 255.0;
+
+    if alpha >= 1.0 {
+        // Fully opaque - use as-is
+        [pixel[0], pixel[1], pixel[2]]
+    } else {
+        // Translucent - composite over background
+        let bg_norm = [
+            background[0] as f64 / 255.0,
+            background[1] as f64 / 255.0,
+            background[2] as f64 / 255.0,
+        ];
+        let fg_norm = [
+            pixel[0] as f64 / 255.0,
+            pixel[1] as f64 / 255.0,
+            pixel[2] as f64 / 255.0,
+        ];
+
+        [
+            ((fg_norm[0] * alpha + bg_norm[0] * (1.0 - alpha)) * 255.0).round() as u8,
+            ((fg_norm[1] * alpha + bg_norm[1] * (1.0 - alpha)) * 255.0).round() as u8,
+            ((fg_norm[2] * alpha + bg_norm[2] * (1.0 - alpha)) * 255.0).round() as u8,
+        ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use image::Rgba;
+
+    #[test]
+    fn test_composite_pixel_fully_opaque() {
+        let pixel = Rgba([255, 0, 0, 255]); // Opaque red
+        let background = [255, 255, 255]; // White
+
+        let result = composite_pixel_over_background(&pixel, background);
+        assert_eq!(result, [255, 0, 0]); // Should stay red
+    }
+
+    #[test]
+    fn test_composite_pixel_fully_transparent() {
+        let pixel = Rgba([255, 0, 0, 0]); // Fully transparent red
+        let background = [255, 255, 255]; // White
+
+        let result = composite_pixel_over_background(&pixel, background);
+        assert_eq!(result, [255, 255, 255]); // Should be white (background)
+    }
+
+    #[test]
+    fn test_composite_pixel_semi_transparent() {
+        let pixel = Rgba([255, 0, 0, 128]); // ~50% transparent red (128/255 = 0.502)
+        let background = [255, 255, 255]; // White
+
+        let result = composite_pixel_over_background(&pixel, background);
+        // ~50% red + ~50% white = rgb(255, 127, 127)
+        assert_eq!(result, [255, 127, 127]);
+    }
+
+    #[test]
+    fn test_composite_pixel_semi_transparent_on_black() {
+        let pixel = Rgba([255, 0, 0, 128]); // 50% transparent red
+        let background = [0, 0, 0]; // Black
+
+        let result = composite_pixel_over_background(&pixel, background);
+        // 50% red + 50% black = rgb(128, 0, 0)
+        assert_eq!(result, [128, 0, 0]);
+    }
+
+    #[test]
+    fn test_composite_pixel_quarter_transparent() {
+        let pixel = Rgba([200, 100, 50, 64]); // 25% transparent (64/255)
+        let background = [0, 0, 0]; // Black
+
+        let result = composite_pixel_over_background(&pixel, background);
+        // Approximately 25% of the color
+        assert_eq!(result, [50, 25, 13]);
+    }
 }
 
 /// Find the minimum alpha value that produces a valid foreground color

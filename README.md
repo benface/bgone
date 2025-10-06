@@ -202,7 +202,19 @@ bgone will struggle with:
 - **Photography**: Photos rarely have truly solid backgrounds, and can have thousands of colors in the foreground
 - **JPEG artifacts**: Compression artifacts interfere with clean color separation, and will be visible in the output
 - **Multiple blended foreground colors**: Quality degrades with complex color mixing
-- **Images with alpha channels**: bgone assumes fully opaque input images
+
+### Alpha Channel Handling
+
+bgone **intelligently handles existing transparency** in input images:
+
+- **Translucent pixels are pre-composited** over the background color before processing
+- **For auto-detection**: Edge pixels with transparency are composited over black
+- **Example**: A semi-transparent red pixel `rgba(255, 0, 0, 0.5)` on white background becomes `rgb(255, 128, 128)` before background removal is applied
+
+This ensures correct processing of images that already have some transparency, such as:
+- PNG images with existing alpha channels
+- Partially transparent graphics
+- Images with anti-aliased edges
 
 ### Tips for Best Results
 
