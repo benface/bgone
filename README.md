@@ -44,7 +44,7 @@ bgone input.png
 bgone input.png output.png
 
 # With background color - overrides automatic detection
-bgone input.png output.png --bg=#ffffff
+bgone input.png --bg=#ffffff
 
 # With foreground color - optimizes for high opacity when pixels match this color (within a threshold)
 bgone input.png --fg=#ff0000
@@ -112,40 +112,7 @@ bgone input.png --fg ff0000 0f0 00f --bg fff
 
 ## Supported Formats
 
-### Input Formats
-bgone can read images in many formats, including:
-- PNG, JPEG, GIF, WebP, TIFF, BMP, ICO, TGA, DDS, HDR, OpenEXR, QOI, and more
-
-### Output Formats
-The output format is determined by the file extension:
-
-**Formats with alpha channel support** (preserved):
-- **PNG** - Recommended for most use cases
-- **WebP** - Modern format with good compression
-- **TIFF/TIF** - Professional/archival use
-- **GIF** - For animations (though bgone only processes single frames)
-- **QOI** - Fast, lossless format
-- **OpenEXR** - HDR images
-
-**Formats without alpha support** (automatically converted to PNG):
-- **JPEG/JPG** - No transparency support → outputs as PNG
-- **BMP** - No transparency support → outputs as PNG
-- All other formats without alpha → outputs as PNG
-
-### Examples
-```bash
-# JPEG input → PNG output (with transparency)
-bgone photo.jpg  # Creates photo-bgone.png
-
-# PNG input → PNG output
-bgone logo.png  # Creates logo-bgone.png
-
-# WebP input → WebP output
-bgone image.webp  # Creates image-bgone.webp
-
-# Explicit format control
-bgone photo.jpg output.webp  # Force WebP output
-```
+bgone supports a wide range of image formats (PNG, JPEG, GIF, WebP, TIFF, BMP, ICO, TGA, DDS, HDR, OpenEXR, QOI, and more). Formats without alpha support (JPEG, BMP, etc.) are automatically converted to PNG.
 
 ## How it works
 
@@ -205,21 +172,14 @@ bgone will struggle with:
 
 ### Alpha Channel Handling
 
-bgone **intelligently handles existing transparency** in input images:
+bgone intelligently handles existing transparency in input images:
 
 - **Translucent pixels are pre-composited** over the background color before processing
 - **For auto-detection**: Edge pixels with transparency are composited over black
-- **Example**: A semi-transparent red pixel `rgba(255, 0, 0, 0.5)` on white background becomes `rgb(255, 128, 128)` before background removal is applied
-
-This ensures correct processing of images that already have some transparency, such as:
-- PNG images with existing alpha channels
-- Partially transparent graphics
-- Images with anti-aliased edges
 
 ### Tips for Best Results
 
-- **Use PNG or lossless formats** for input images to avoid compression artifacts
-- **Avoid JPEG input** when possible - compression artifacts will be visible in the output (though bgone will automatically convert the output to PNG)
+- Use PNG or lossless formats to avoid compression artifacts
 - Manually specify the background color with `--bg` for best accuracy
 - Experiment with `--threshold` for fine-tuning edge detection
 - Use `auto` only for foreground colors that aren't directly visible in the image but can recreate existing colors when blended with the background

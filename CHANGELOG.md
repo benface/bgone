@@ -2,6 +2,25 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.4.0] - 2025-10-06
+
+### Added
+- Intelligent alpha channel handling: translucent input pixels are pre-composited over the background color
+- Smart output format selection: formats without alpha support (JPEG, BMP) auto-convert to PNG
+- Comprehensive "Supported Formats" documentation section
+- 5 unit tests for alpha channel compositing
+- 2 unit tests for format conversion behavior
+
+### Changed
+- Upgraded to Rust Edition 2024
+- Applied clippy improvements: RangeInclusive::contains(), let-chains, unwrap_or optimization
+- Simplified README documentation for better readability
+- Background auto-detection now composites translucent edge pixels over black
+
+### Fixed
+- Images with existing alpha channels now process correctly instead of being treated as fully opaque
+- Case-insensitive file extension handling
+
 ## [0.3.0] - 2025-10-06
 
 ### Added
