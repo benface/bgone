@@ -48,6 +48,10 @@ struct Args {
     #[arg(short = 't', long = "threshold", value_name = "FLOAT")]
     threshold: Option<f64>,
 
+    /// Trim the output image by cropping to the bounding box of non-transparent pixels.
+    #[arg(long = "trim")]
+    trim: bool,
+
     /// Print version
     #[arg(short = 'v', short_alias = 'V', long = "version", action = clap::ArgAction::Version)]
     version: (),
@@ -120,6 +124,7 @@ fn main() -> Result<()> {
         background_color,
         args.strict,
         args.threshold,
+        args.trim,
     )?;
 
     Ok(())

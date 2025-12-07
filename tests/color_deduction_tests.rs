@@ -1,6 +1,7 @@
 mod common;
 
-use assert_cmd::Command;
+use assert_cmd::cargo;
+use assert_cmd::prelude::*;
 use bgone::color::ForegroundColorSpec;
 use bgone::deduce::deduce_unknown_colors;
 use bgone::unmix::{compute_result_color, unmix_colors};
@@ -8,6 +9,7 @@ use common::{
     calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
     save_test_images,
 };
+use std::process::Command;
 use tempfile::TempDir;
 
 #[test]
@@ -17,7 +19,7 @@ fn test_color_deduction_single_unknown() {
     let output_path = temp_dir.path().join("output.png");
 
     // Run bgone with one known and one unknown color
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/square-glow.png",
         output_path.to_str().unwrap(),
@@ -100,7 +102,7 @@ fn test_color_deduction_all_unknown() {
     img.save(&test_image_path).unwrap();
 
     // Run bgone with all unknown colors
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         test_image_path.to_str().unwrap(),
         output_path.to_str().unwrap(),
@@ -126,7 +128,7 @@ fn test_color_deduction_error_cases() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test: Only 'auto' specified without any known colors - should work in strict mode
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/square.png",
         output_path.to_str().unwrap(),
@@ -145,7 +147,7 @@ fn test_mixed_known_and_unknown_colors() {
     let output_path = temp_dir.path().join("output.png");
 
     // Run bgone with mix of known and unknown colors
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/rectangles.png",
         output_path.to_str().unwrap(),
@@ -170,7 +172,7 @@ fn test_multiple_unknown_colors_convergence() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test that multiple unknowns don't all converge to black
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
@@ -273,7 +275,7 @@ fn test_auto_deduction_finds_optimal_colors() {
 
     // This test checks that auto deduction finds the most saturated colors
     // (furthest from the background), not just any valid colors
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
@@ -355,7 +357,7 @@ fn test_circle_gradients_with_known_red() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test with red as known color - should deduce green and blue
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
@@ -448,7 +450,7 @@ fn test_circle_gradients_with_known_green() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test with green as known color - should deduce red and blue
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
@@ -541,7 +543,7 @@ fn test_circle_gradients_with_known_blue() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test with blue as known color - should deduce red and green
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
@@ -627,7 +629,7 @@ fn test_square_gradient_auto_deduction() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test with auto color deduction - should maximize opacity
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/square-gradient.png",
         output_path.to_str().unwrap(),
@@ -693,7 +695,7 @@ fn test_square_gradient_with_known_magenta() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test with known magenta (slightly different) and auto cyan
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/square-gradient.png",
         output_path.to_str().unwrap(),
@@ -749,7 +751,7 @@ fn test_square_gradient_with_known_cyan() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test with known cyan (slightly different) and auto magenta
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/square-gradient.png",
         output_path.to_str().unwrap(),

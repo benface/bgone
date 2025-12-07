@@ -24,6 +24,7 @@ pub fn process_image<P: AsRef<Path>>(
     background_color: Color,
     strict_mode: bool,
     threshold: Option<f64>,
+    trim: bool,
 ) -> Result<()> {
     let input_path = input_path.as_ref();
     let output_path = output_path.as_ref();
@@ -116,7 +117,41 @@ pub fn process_image<P: AsRef<Path>>(
 
     progress.finish_with_message(format!("✓ Processed {} pixels", width * height));
 
-    // Create and save output image
+    // Create output image
+    let mut output_img = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(width, height);
+    for (i, pixel) in output_img.pixels_mut().enumerate() {
+        *pixel = Rgba(processed_pixels[i]);
+    }
+
+    // Apply trim if requested
+    let final_img = if trim {
+        let trim_progress = ProgressBar::new_spinner();
+        trim_progress.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner:.green} Trimming image...")
+                .expect("Failed to create progress bar style"),
+        );
+        trim_progress.enable_steady_tick(std::time::Duration::from_millis(100));
+
+        let trimmed = trim_to_content(&output_img);
+        let (new_width, new_height) = trimmed.dimensions();
+
+        trim_progress.finish_and_clear();
+        if new_width != width || new_height != height {
+            println!(
+                "✓ Trimmed from {}x{} to {}x{}",
+                width, height, new_width, new_height
+            );
+        } else {
+            println!("✓ No trimming needed (image already tight)");
+        }
+
+        trimmed
+    } else {
+        output_img
+    };
+
+    // Save output image
     let save_progress = ProgressBar::new_spinner();
     save_progress.set_style(
         ProgressStyle::default_spinner()
@@ -125,12 +160,7 @@ pub fn process_image<P: AsRef<Path>>(
     );
     save_progress.enable_steady_tick(std::time::Duration::from_millis(100));
 
-    let mut output_img = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(width, height);
-    for (i, pixel) in output_img.pixels_mut().enumerate() {
-        *pixel = Rgba(processed_pixels[i]);
-    }
-
-    output_img
+    final_img
         .save(output_path)
         .with_context(|| format!("Failed to save output image: {}", output_path.display()))?;
 
@@ -144,6 +174,62 @@ pub fn process_image<P: AsRef<Path>>(
     );
 
     Ok(())
+}
+
+/// Trim an image by cropping to the bounding box of non-transparent pixels.
+///
+/// Finds the bounding box of all pixels with alpha > 0 and crops the image
+/// to that region. If all pixels are transparent, returns a 1x1 transparent image.
+pub fn trim_to_content(img: &ImageBuffer<Rgba<u8>, Vec<u8>>) -> ImageBuffer<Rgba<u8>, Vec<u8>> {
+    let (width, height) = img.dimensions();
+
+    if width == 0 || height == 0 {
+        return ImageBuffer::new(1, 1);
+    }
+
+    // Find bounding box of non-transparent pixels
+    let mut min_x = width;
+    let mut min_y = height;
+    let mut max_x = 0u32;
+    let mut max_y = 0u32;
+
+    for y in 0..height {
+        for x in 0..width {
+            let pixel = img.get_pixel(x, y);
+            if pixel[3] > 0 {
+                // Non-transparent pixel
+                min_x = min_x.min(x);
+                min_y = min_y.min(y);
+                max_x = max_x.max(x);
+                max_y = max_y.max(y);
+            }
+        }
+    }
+
+    // If no non-transparent pixels found, return a 1x1 transparent image
+    if max_x < min_x || max_y < min_y {
+        return ImageBuffer::from_pixel(1, 1, Rgba([0, 0, 0, 0]));
+    }
+
+    // Calculate new dimensions (inclusive bounds, so add 1)
+    let new_width = max_x - min_x + 1;
+    let new_height = max_y - min_y + 1;
+
+    // If no trimming needed, return a clone
+    if new_width == width && new_height == height {
+        return img.clone();
+    }
+
+    // Create cropped image
+    let mut trimmed = ImageBuffer::new(new_width, new_height);
+    for y in 0..new_height {
+        for x in 0..new_width {
+            let src_pixel = img.get_pixel(min_x + x, min_y + y);
+            trimmed.put_pixel(x, y, *src_pixel);
+        }
+    }
+
+    trimmed
 }
 
 /// Create a progress bar with consistent styling
@@ -189,60 +275,6 @@ fn composite_pixel_over_background(pixel: &Rgba<u8>, background: Color) -> Color
             ((fg_norm[1] * alpha + bg_norm[1] * (1.0 - alpha)) * 255.0).round() as u8,
             ((fg_norm[2] * alpha + bg_norm[2] * (1.0 - alpha)) * 255.0).round() as u8,
         ]
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use image::Rgba;
-
-    #[test]
-    fn test_composite_pixel_fully_opaque() {
-        let pixel = Rgba([255, 0, 0, 255]); // Opaque red
-        let background = [255, 255, 255]; // White
-
-        let result = composite_pixel_over_background(&pixel, background);
-        assert_eq!(result, [255, 0, 0]); // Should stay red
-    }
-
-    #[test]
-    fn test_composite_pixel_fully_transparent() {
-        let pixel = Rgba([255, 0, 0, 0]); // Fully transparent red
-        let background = [255, 255, 255]; // White
-
-        let result = composite_pixel_over_background(&pixel, background);
-        assert_eq!(result, [255, 255, 255]); // Should be white (background)
-    }
-
-    #[test]
-    fn test_composite_pixel_semi_transparent() {
-        let pixel = Rgba([255, 0, 0, 128]); // ~50% transparent red (128/255 = 0.502)
-        let background = [255, 255, 255]; // White
-
-        let result = composite_pixel_over_background(&pixel, background);
-        // ~50% red + ~50% white = rgb(255, 127, 127)
-        assert_eq!(result, [255, 127, 127]);
-    }
-
-    #[test]
-    fn test_composite_pixel_semi_transparent_on_black() {
-        let pixel = Rgba([255, 0, 0, 128]); // 50% transparent red
-        let background = [0, 0, 0]; // Black
-
-        let result = composite_pixel_over_background(&pixel, background);
-        // 50% red + 50% black = rgb(128, 0, 0)
-        assert_eq!(result, [128, 0, 0]);
-    }
-
-    #[test]
-    fn test_composite_pixel_quarter_transparent() {
-        let pixel = Rgba([200, 100, 50, 64]); // 25% transparent (64/255)
-        let background = [0, 0, 0]; // Black
-
-        let result = composite_pixel_over_background(&pixel, background);
-        // Approximately 25% of the color
-        assert_eq!(result, [50, 25, 13]);
     }
 }
 
@@ -458,5 +490,59 @@ fn process_pixel_non_strict_with_fg(
             final_color[2],
             (best_alpha * 255.0).round() as u8,
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use image::Rgba;
+
+    #[test]
+    fn test_composite_pixel_fully_opaque() {
+        let pixel = Rgba([255, 0, 0, 255]); // Opaque red
+        let background = [255, 255, 255]; // White
+
+        let result = composite_pixel_over_background(&pixel, background);
+        assert_eq!(result, [255, 0, 0]); // Should stay red
+    }
+
+    #[test]
+    fn test_composite_pixel_fully_transparent() {
+        let pixel = Rgba([255, 0, 0, 0]); // Fully transparent red
+        let background = [255, 255, 255]; // White
+
+        let result = composite_pixel_over_background(&pixel, background);
+        assert_eq!(result, [255, 255, 255]); // Should be white (background)
+    }
+
+    #[test]
+    fn test_composite_pixel_semi_transparent() {
+        let pixel = Rgba([255, 0, 0, 128]); // ~50% transparent red (128/255 = 0.502)
+        let background = [255, 255, 255]; // White
+
+        let result = composite_pixel_over_background(&pixel, background);
+        // ~50% red + ~50% white = rgb(255, 127, 127)
+        assert_eq!(result, [255, 127, 127]);
+    }
+
+    #[test]
+    fn test_composite_pixel_semi_transparent_on_black() {
+        let pixel = Rgba([255, 0, 0, 128]); // 50% transparent red
+        let background = [0, 0, 0]; // Black
+
+        let result = composite_pixel_over_background(&pixel, background);
+        // 50% red + 50% black = rgb(128, 0, 0)
+        assert_eq!(result, [128, 0, 0]);
+    }
+
+    #[test]
+    fn test_composite_pixel_quarter_transparent() {
+        let pixel = Rgba([200, 100, 50, 64]); // 25% transparent (64/255)
+        let background = [0, 0, 0]; // Black
+
+        let result = composite_pixel_over_background(&pixel, background);
+        // Approximately 25% of the color
+        assert_eq!(result, [50, 25, 13]);
     }
 }

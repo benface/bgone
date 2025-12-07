@@ -1,10 +1,12 @@
 mod common;
 
-use assert_cmd::Command;
+use assert_cmd::cargo;
+use assert_cmd::prelude::*;
 use common::{
     calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
     save_test_images,
 };
+use std::process::Command;
 use tempfile::TempDir;
 
 /// Test square-gradient-stroke.png in all four modes to showcase
@@ -18,8 +20,7 @@ fn test_square_gradient_stroke_non_strict_no_fg() {
 
     // Run bgone in non-strict mode without any foreground colors
     // This should optimize for maximum transparency
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
@@ -68,8 +69,7 @@ fn test_square_gradient_stroke_non_strict_with_fg() {
 
     // Run bgone in non-strict mode with three known foreground colors
     // Colors close to these will use high opacity, others will be flexible
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
@@ -124,8 +124,7 @@ fn test_square_gradient_stroke_strict_known_colors() {
 
     // Run bgone in strict mode with three known foreground colors
     // This restricts the unmixing to only these specific colors
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
@@ -181,8 +180,7 @@ fn test_square_gradient_stroke_strict_auto_colors() {
 
     // Run bgone in strict mode with automatic color deduction
     // This will find the optimal 3 colors automatically
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),
@@ -238,8 +236,7 @@ fn test_square_gradient_stroke_non_strict_with_fg_high_threshold() {
 
     // Run bgone in non-strict mode with three known foreground colors and higher threshold
     // This should make more pixels be considered "close enough" to use the known colors
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             "tests/inputs/square-gradient-stroke.png",
             output_path.to_str().unwrap(),

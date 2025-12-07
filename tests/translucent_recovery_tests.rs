@@ -1,9 +1,11 @@
 mod common;
-use assert_cmd::Command;
+use assert_cmd::cargo;
+use assert_cmd::prelude::*;
 use common::{
     calculate_psnr, compare_rgba_images, ensure_output_dir, overlay_on_background, save_test_images,
 };
 use image::{DynamicImage, ImageBuffer, Rgba};
+use std::process::Command;
 use tempfile::TempDir;
 
 // Load the fire image (translucent test image)
@@ -74,8 +76,7 @@ fn test_fire_on_black_non_strict() {
 
     // Run bgone in non-strict mode without specifying foreground colors
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -125,8 +126,7 @@ fn test_fire_on_black_non_strict_single_auto() {
 
     // Run bgone in non-strict mode with single auto
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -174,8 +174,7 @@ fn test_fire_on_black_strict_single_auto() {
 
     // Run bgone in strict mode with single auto
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -226,8 +225,7 @@ fn test_fire_on_black_strict_mixed() {
 
     // Run bgone in strict mode with white + 2 auto colors
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -282,8 +280,7 @@ fn test_fire_on_white_non_strict() {
     fire_on_white.save(&composited_path).unwrap();
 
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -328,8 +325,7 @@ fn test_fire_on_white_non_strict_single_auto() {
     fire_on_white.save(&composited_path).unwrap();
 
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -376,8 +372,7 @@ fn test_fire_on_white_strict_single_auto() {
     fire_on_white.save(&composited_path).unwrap();
 
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -428,8 +423,7 @@ fn test_fire_on_white_strict_mixed() {
 
     // Run bgone in strict mode with black + 2 auto colors
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -485,8 +479,7 @@ fn test_fire_on_colored_non_strict() {
     fire_on_colored.save(&composited_path).unwrap();
 
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -531,8 +524,7 @@ fn test_fire_on_colored_non_strict_single_auto() {
     fire_on_colored.save(&composited_path).unwrap();
 
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -579,8 +571,7 @@ fn test_fire_on_colored_strict_single_auto() {
     fire_on_colored.save(&composited_path).unwrap();
 
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),
@@ -631,8 +622,7 @@ fn test_fire_on_colored_strict_mixed() {
 
     // Run bgone in strict mode with black + 2 auto colors
     let output_path = temp_dir.path().join("output.png");
-    Command::cargo_bin("bgone")
-        .unwrap()
+    Command::new(cargo::cargo_bin!("bgone"))
         .args([
             composited_path.to_str().unwrap(),
             output_path.to_str().unwrap(),

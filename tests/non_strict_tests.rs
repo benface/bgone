@@ -1,12 +1,14 @@
 mod common;
 
-use assert_cmd::Command;
+use assert_cmd::cargo;
+use assert_cmd::prelude::*;
 use bgone::process_image;
 use common::{
     calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
     save_test_images,
 };
 use image::{DynamicImage, Rgba, RgbaImage};
+use std::process::Command;
 use tempfile::TempDir;
 
 #[test]
@@ -16,7 +18,7 @@ fn test_non_strict_mode_no_fg() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test non-strict mode without any foreground colors
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/circle-gradients.png",
         output_path.to_str().unwrap(),
@@ -56,7 +58,7 @@ fn test_non_strict_mode_with_fg() {
     let output_path = temp_dir.path().join("output.png");
 
     // Test non-strict mode with red foreground color
-    let mut cmd = Command::cargo_bin("bgone").unwrap();
+    let mut cmd = Command::new(cargo::cargo_bin!("bgone"));
     cmd.args([
         "tests/inputs/square-glow.png",
         output_path.to_str().unwrap(),
@@ -121,7 +123,16 @@ fn test_non_strict_optimal_alpha() {
     input.save(&input_path).unwrap();
 
     let background = [255u8, 255, 255];
-    process_image(&input_path, &output_path, vec![], background, false, None).unwrap();
+    process_image(
+        &input_path,
+        &output_path,
+        vec![],
+        background,
+        false,
+        None,
+        false,
+    )
+    .unwrap();
 
     let result = image::open(&output_path).unwrap();
     if let DynamicImage::ImageRgba8(result_img) = &result {
@@ -176,7 +187,16 @@ fn test_non_strict_edge_cases() {
     input.save(&input_path).unwrap();
 
     let background = [255u8, 255, 255];
-    process_image(&input_path, &output_path, vec![], background, false, None).unwrap();
+    process_image(
+        &input_path,
+        &output_path,
+        vec![],
+        background,
+        false,
+        None,
+        false,
+    )
+    .unwrap();
 
     let result = image::open(&output_path).unwrap();
     if let DynamicImage::ImageRgba8(result_img) = &result {
@@ -207,7 +227,16 @@ fn test_non_strict_edge_cases() {
     let output_path = temp_dir.path().join("output3.png");
     input.save(&input_path).unwrap();
 
-    process_image(&input_path, &output_path, vec![], background, false, None).unwrap();
+    process_image(
+        &input_path,
+        &output_path,
+        vec![],
+        background,
+        false,
+        None,
+        false,
+    )
+    .unwrap();
 
     let result = image::open(&output_path).unwrap();
     if let DynamicImage::ImageRgba8(result_img) = &result {
@@ -255,7 +284,16 @@ fn test_non_strict_alpha_minimization() {
         let output_path = temp_dir.path().join(format!("output_{}.png", i));
         input.save(&input_path).unwrap();
 
-        process_image(&input_path, &output_path, vec![], *background, false, None).unwrap();
+        process_image(
+            &input_path,
+            &output_path,
+            vec![],
+            *background,
+            false,
+            None,
+            false,
+        )
+        .unwrap();
 
         let result = image::open(&output_path).unwrap();
         if let DynamicImage::ImageRgba8(result_img) = &result {

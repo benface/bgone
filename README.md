@@ -79,6 +79,19 @@ bgone input.png --strict --fg ff0000 auto
 bgone input.png --strict --fg=#f00 --bg=#fff
 ```
 
+### Trimming Output
+
+Use `--trim` to automatically crop the output image to the bounding box of non-transparent pixels, removing any fully transparent padding:
+
+```bash
+# Remove background and trim
+bgone input.png --trim
+
+# Combine with other options
+bgone input.png --bg=#ffffff --trim
+bgone input.png --fg=#ff0000 --bg=#000000 --trim
+```
+
 ### Additional Examples
 
 ```bash
@@ -107,6 +120,9 @@ bgone input.png --fg ff0000 0f0 00f --bg fff
 - `-t, --threshold FLOAT` - Color similarity threshold (`0.0`-`1.0`, default: `0.05`)
   - When using one or multiple `auto` foreground colors: colors within this threshold are considered similar during deduction
   - When using any `--fg` in non-strict mode: pixels within this threshold of a (known or deduced) foreground color will use that color
+- `--trim` - Trim the output image by cropping to the bounding box of non-transparent pixels
+  - Removes fully transparent padding from all edges
+  - Useful for getting tightly-cropped assets after background removal
 - `-h, --help` - Print help information
 - `-v, --version` - Print version information
 
@@ -223,6 +239,7 @@ cargo test --release --test non_strict_tests -- --nocapture
 cargo test --release --test color_deduction_tests -- --nocapture
 cargo test --release --test square_gradient_stroke_tests -- --nocapture
 cargo test --release --test translucent_recovery_tests -- --nocapture
+cargo test --release --test trim_tests -- --nocapture
 
 # Generate test inputs (only needed once)
 cargo test --release --test generate_inputs -- --ignored
@@ -247,6 +264,7 @@ PSNR values above 40 dB indicate excellent quality reconstruction.
   - **Color deduction tests**: Single/multiple unknowns, mixed known/unknown colors, gradient deduction
   - **Square gradient stroke tests**: Various threshold and mode combinations
   - **Translucent recovery tests**: Complex fire effects on different backgrounds
+  - **Trim tests**: Image cropping, edge cases, CLI integration
 - **Validation approach**: Process image → overlay on background → compare with original
 
 ## Contributing
