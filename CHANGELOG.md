@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.5.0] - 2025-12-07
+
+### Added
+- `--trim` CLI flag to crop output images to the bounding box of non-transparent pixels
+- `trim_to_content()` public function in library API
+- 8 new tests for trim functionality covering various edge cases
+
+### Changed
+- Updated all dependencies via `cargo update`
+- Migrated from deprecated `assert_cmd::Command::cargo_bin()` to `cargo::cargo_bin!()` macro in tests
+- Fixed clippy `items_after_test_module` warning by reorganizing lib.rs
+
 ## [0.4.0] - 2025-10-06
 
 ### Added
