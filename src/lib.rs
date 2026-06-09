@@ -16,47 +16,46 @@ use crate::unmix::{
 };
 use nalgebra::Vector3;
 
-/// Process an image to remove its background
-#[allow(clippy::too_many_arguments)]
+/// Tunable options for [`process_image`].
+///
+/// Defaults: non-strict, no thresholds (existing exact-match behavior), no
+/// trim, verbose progress output.
+#[derive(Debug, Default, Clone)]
+pub struct ProcessOptions {
+    /// If true, restrict unmixing to the specified foreground colors only.
+    /// Requires at least one foreground color.
+    pub strict_mode: bool,
+    /// Foreground color similarity threshold (0.0-1.0). `None` uses the default
+    /// of [`unmix::DEFAULT_COLOR_CLOSENESS_THRESHOLD`].
+    pub fg_threshold: Option<f64>,
+    /// Background snap threshold (0.0-1.0). Pixels within this per-channel L∞
+    /// distance of the resolved background are forced to fully transparent
+    /// before unmixing. `None` (or 0.0) preserves the existing exact-match-only
+    /// behavior.
+    pub bg_threshold: Option<f64>,
+    /// Crop the output to the bounding box of non-transparent pixels.
+    pub trim: bool,
+    /// Suppress per-step progress bars and status output (used in batch mode).
+    pub quiet: bool,
+}
+
+/// Process an image to remove its background.
 pub fn process_image<P: AsRef<Path>>(
     input_path: P,
     output_path: P,
     foreground_colors: Vec<Color>,
     background_color: Color,
-    strict_mode: bool,
-    fg_threshold: Option<f64>,
-    bg_threshold: Option<f64>,
-    trim: bool,
+    options: ProcessOptions,
 ) -> Result<()> {
-    process_image_with_options(
-        input_path,
-        output_path,
-        foreground_colors,
-        background_color,
+    let input_path = input_path.as_ref();
+    let output_path = output_path.as_ref();
+    let ProcessOptions {
         strict_mode,
         fg_threshold,
         bg_threshold,
         trim,
-        false,
-    )
-}
-
-/// Process an image to remove its background, with a `quiet` flag to suppress
-/// progress bars and per-step status output (used in batch mode).
-#[allow(clippy::too_many_arguments)]
-pub fn process_image_with_options<P: AsRef<Path>>(
-    input_path: P,
-    output_path: P,
-    foreground_colors: Vec<Color>,
-    background_color: Color,
-    strict_mode: bool,
-    fg_threshold: Option<f64>,
-    bg_threshold: Option<f64>,
-    trim: bool,
-    quiet: bool,
-) -> Result<()> {
-    let input_path = input_path.as_ref();
-    let output_path = output_path.as_ref();
+        quiet,
+    } = options;
 
     // Loading progress
     let load_progress = if quiet {
@@ -103,67 +102,37 @@ pub fn process_image_with_options<P: AsRef<Path>>(
         create_progress_bar((width * height) as u64)?
     };
 
-    // Process pixels in parallel
+    // Process pixels in parallel. The mode dispatch is loop-invariant — the
+    // branch predictor handles it for free — so a single par_iter is both
+    // simpler and gives identical performance to one-iter-per-mode.
     let pixels: Vec<_> = rgba.pixels().collect();
     let bg_snap_threshold = bg_threshold.unwrap_or(0.0);
-    let processed_pixels: Vec<[u8; 4]> = if !strict_mode && foreground_colors.is_empty() {
-        // Non-strict mode without foreground colors
-        pixels
-            .par_iter()
-            .progress_with(progress.clone())
-            .map(|pixel| {
-                // Pre-composite translucent pixels over background to get opaque color
-                let observed = composite_pixel_over_background(pixel, background_color);
-                if is_within_bg_threshold(observed, background_color, bg_snap_threshold) {
-                    return [0, 0, 0, 0];
-                }
-                process_pixel_non_strict_no_fg(observed, bg_normalized)
-            })
-            .collect()
-    } else if !strict_mode {
-        // Non-strict mode WITH foreground colors
-        let color_threshold = fg_threshold.unwrap_or(DEFAULT_COLOR_CLOSENESS_THRESHOLD);
-        pixels
-            .par_iter()
-            .progress_with(progress.clone())
-            .map(|pixel| {
-                // Pre-composite translucent pixels over background to get opaque color
-                let observed = composite_pixel_over_background(pixel, background_color);
-                if is_within_bg_threshold(observed, background_color, bg_snap_threshold) {
-                    return [0, 0, 0, 0];
-                }
+    let fg_color_threshold = fg_threshold.unwrap_or(DEFAULT_COLOR_CLOSENESS_THRESHOLD);
+    let has_fg = !foreground_colors.is_empty();
+
+    let processed_pixels: Vec<[u8; 4]> = pixels
+        .par_iter()
+        .progress_with(progress.clone())
+        .map(|pixel| {
+            // Pre-composite translucent pixels over background to get opaque color
+            let observed = composite_pixel_over_background(pixel, background_color);
+            if is_within_bg_threshold(observed, background_color, bg_snap_threshold) {
+                return [0, 0, 0, 0];
+            }
+            if strict_mode {
+                process_pixel_strict(observed, &fg_normalized, bg_normalized)
+            } else if has_fg {
                 process_pixel_non_strict_with_fg(
                     observed,
                     &fg_normalized,
                     bg_normalized,
-                    color_threshold,
+                    fg_color_threshold,
                 )
-            })
-            .collect()
-    } else {
-        // Strict mode
-        pixels
-            .par_iter()
-            .progress_with(progress.clone())
-            .map(|pixel| {
-                // Pre-composite translucent pixels over background to get opaque color
-                let observed = composite_pixel_over_background(pixel, background_color);
-                if is_within_bg_threshold(observed, background_color, bg_snap_threshold) {
-                    return [0, 0, 0, 0];
-                }
-                let unmix_result = unmix_colors(observed, &fg_normalized, bg_normalized);
-                let (result_color, alpha) = compute_result_color(&unmix_result, &fg_normalized);
-
-                let final_color = denormalize_color(result_color);
-                [
-                    final_color[0],
-                    final_color[1],
-                    final_color[2],
-                    (alpha * 255.0).round() as u8,
-                ]
-            })
-            .collect()
-    };
+            } else {
+                process_pixel_non_strict_no_fg(observed, bg_normalized)
+            }
+        })
+        .collect();
 
     if quiet {
         progress.finish_and_clear();
@@ -318,8 +287,9 @@ fn create_progress_bar(total: u64) -> Result<ProgressBar> {
 /// Uses an L∞ (per-channel max) distance metric in normalized [0.0, 1.0] space,
 /// so a `bg_threshold` of `0.004` corresponds to ~1/255 per channel.
 ///
-/// With `bg_threshold <= 0.0` this is a no-op (existing exact-match logic in the
-/// pixel processors handles the strict equality case).
+/// With `bg_threshold <= 0.0` this is a no-op: exact-background pixels are
+/// still handled correctly downstream — non-strict modes have an explicit
+/// 1e-6 early-return, and strict mode's unmix yields alpha ≈ 0 for them.
 fn is_within_bg_threshold(observed: Color, background: Color, bg_threshold: f64) -> bool {
     if bg_threshold <= 0.0 {
         return false;
@@ -475,6 +445,24 @@ fn find_minimum_alpha_for_color(
     }
 
     Some((best_fg, best_alpha))
+}
+
+/// Process a pixel in strict mode: unmix against the supplied foreground
+/// colors only, optimizing for maximum opacity.
+fn process_pixel_strict(
+    observed: Color,
+    foreground_colors: &[NormalizedColor],
+    background: NormalizedColor,
+) -> [u8; 4] {
+    let unmix_result = unmix_colors(observed, foreground_colors, background);
+    let (result_color, alpha) = compute_result_color(&unmix_result, foreground_colors);
+    let final_color = denormalize_color(result_color);
+    [
+        final_color[0],
+        final_color[1],
+        final_color[2],
+        (alpha * 255.0).round() as u8,
+    ]
 }
 
 /// Process a pixel in non-strict mode without foreground colors

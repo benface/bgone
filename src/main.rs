@@ -6,10 +6,11 @@ use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 use bgone::{
+    ProcessOptions,
     background::detect_background_color,
     color::{Color, ForegroundColorSpec, parse_foreground_spec, parse_hex_color},
     deduce::deduce_unknown_colors,
-    process_image_with_options, unmix,
+    process_image, unmix,
 };
 
 #[derive(Parser, Debug)]
@@ -269,16 +270,18 @@ fn process_single_file(
             .collect::<Result<Vec<_>>>()?
     };
 
-    process_image_with_options(
+    process_image(
         input,
         output_path,
         foreground_colors,
         background_color,
-        strict,
-        fg_threshold,
-        bg_threshold,
-        trim,
-        quiet,
+        ProcessOptions {
+            strict_mode: strict,
+            fg_threshold,
+            bg_threshold,
+            trim,
+            quiet,
+        },
     )?;
 
     Ok(())

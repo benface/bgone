@@ -1,4 +1,4 @@
-use bgone::process_image;
+use bgone::{ProcessOptions, process_image};
 use image::{DynamicImage, Rgba, RgbaImage};
 use tempfile::TempDir;
 
@@ -26,10 +26,12 @@ fn process_palette(
         &output_path,
         foreground_colors,
         background,
-        strict,
-        fg_threshold,
-        bg_threshold,
-        false,
+        ProcessOptions {
+            strict_mode: strict,
+            fg_threshold,
+            bg_threshold,
+            ..Default::default()
+        },
     )
     .unwrap();
 

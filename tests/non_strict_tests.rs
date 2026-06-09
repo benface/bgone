@@ -2,7 +2,7 @@ mod common;
 
 use assert_cmd::cargo;
 use assert_cmd::prelude::*;
-use bgone::process_image;
+use bgone::{ProcessOptions, process_image};
 use common::{
     calculate_psnr, calculate_similarity_percentage, ensure_output_dir, overlay_on_background,
     save_test_images,
@@ -128,10 +128,7 @@ fn test_non_strict_optimal_alpha() {
         &output_path,
         vec![],
         background,
-        false,
-        None,
-        None,
-        false,
+        ProcessOptions::default(),
     )
     .unwrap();
 
@@ -193,10 +190,7 @@ fn test_non_strict_edge_cases() {
         &output_path,
         vec![],
         background,
-        false,
-        None,
-        None,
-        false,
+        ProcessOptions::default(),
     )
     .unwrap();
 
@@ -234,10 +228,7 @@ fn test_non_strict_edge_cases() {
         &output_path,
         vec![],
         background,
-        false,
-        None,
-        None,
-        false,
+        ProcessOptions::default(),
     )
     .unwrap();
 
@@ -292,10 +283,7 @@ fn test_non_strict_alpha_minimization() {
             &output_path,
             vec![],
             *background,
-            false,
-            None,
-            None,
-            false,
+            ProcessOptions::default(),
         )
         .unwrap();
 
