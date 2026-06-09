@@ -167,3 +167,89 @@ fn test_bg_threshold_applies_in_strict_mode() {
     );
     assert!(out[3][3] > 0, "half-red should have non-zero alpha");
 }
+
+#[test]
+fn test_bg_threshold_snaps_translucent_input_pixels() {
+    // A translucent input pixel is pre-composited over the background before
+    // unmixing. If the composite lands near the background, the snap should
+    // fire — even though the raw input color was nowhere near it.
+    let temp_dir = TempDir::new().unwrap();
+    let mut img = RgbaImage::new(2, 1);
+    // Raw RGB is mid-gray, but alpha=5/255 ≈ 2% means it composites to ~[2,2,2]
+    // over a black background — well within --bg-threshold ≈ 4/255.
+    img.put_pixel(0, 0, Rgba([128, 128, 128, 5]));
+    // Control: an opaque pixel clearly above the snap threshold.
+    img.put_pixel(1, 0, Rgba([200, 200, 200, 255]));
+
+    let input_path = temp_dir.path().join("in.png");
+    let output_path = temp_dir.path().join("out.png");
+    DynamicImage::ImageRgba8(img).save(&input_path).unwrap();
+
+    process_image(
+        &input_path,
+        &output_path,
+        vec![],
+        [0, 0, 0],
+        ProcessOptions {
+            bg_threshold: Some(0.016), // ~4/255
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let out = image::open(&output_path).unwrap().to_rgba8();
+    assert_eq!(
+        out.get_pixel(0, 0).0,
+        [0, 0, 0, 0],
+        "translucent input compositing to near-bg should snap to fully transparent"
+    );
+    assert!(
+        out.get_pixel(1, 0).0[3] > 0,
+        "opaque mid-gray must not snap, got alpha={}",
+        out.get_pixel(1, 0).0[3]
+    );
+}
+
+#[test]
+fn test_bg_threshold_combines_with_trim() {
+    // Mostly-bg image with a small content region. Without --bg-threshold the
+    // near-bg pixels keep tiny alphas so --trim can't crop them; with
+    // --bg-threshold they snap to fully transparent and --trim drops them.
+    let temp_dir = TempDir::new().unwrap();
+    let mut img = RgbaImage::new(5, 1);
+    img.put_pixel(0, 0, Rgba([1, 0, 0, 255])); // near-bg, will snap
+    img.put_pixel(1, 0, Rgba([2, 2, 2, 255])); // near-bg, will snap
+    img.put_pixel(2, 0, Rgba([255, 0, 0, 255])); // foreground content
+    img.put_pixel(3, 0, Rgba([0, 1, 0, 255])); // near-bg, will snap
+    img.put_pixel(4, 0, Rgba([3, 0, 3, 255])); // near-bg, will snap
+
+    let input_path = temp_dir.path().join("in.png");
+    let output_path = temp_dir.path().join("out.png");
+    DynamicImage::ImageRgba8(img).save(&input_path).unwrap();
+
+    process_image(
+        &input_path,
+        &output_path,
+        vec![],
+        [0, 0, 0],
+        ProcessOptions {
+            bg_threshold: Some(0.016),
+            trim: true,
+            ..Default::default()
+        },
+    )
+    .unwrap();
+
+    let out = image::open(&output_path).unwrap().to_rgba8();
+    assert_eq!(
+        out.dimensions(),
+        (1, 1),
+        "after snap+trim, only the single fg pixel should remain"
+    );
+    let kept = out.get_pixel(0, 0);
+    assert!(
+        kept[3] > 0,
+        "the surviving pixel must be non-transparent, got alpha={}",
+        kept[3]
+    );
+}

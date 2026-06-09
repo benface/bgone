@@ -40,6 +40,9 @@ pub struct ProcessOptions {
 }
 
 /// Process an image to remove its background.
+///
+/// Returns `Err` if `options.strict_mode` is set but `foreground_colors` is
+/// empty — strict mode requires at least one color to unmix against.
 pub fn process_image<P: AsRef<Path>>(
     input_path: P,
     output_path: P,
@@ -56,6 +59,12 @@ pub fn process_image<P: AsRef<Path>>(
         trim,
         quiet,
     } = options;
+
+    if strict_mode && foreground_colors.is_empty() {
+        anyhow::bail!(
+            "Strict mode requires at least one foreground color, but `foreground_colors` is empty"
+        );
+    }
 
     // Loading progress
     let load_progress = if quiet {
@@ -662,5 +671,41 @@ mod tests {
         let t = 0.02;
         assert!(is_within_bg_threshold([5, 5, 5], bg, t));
         assert!(!is_within_bg_threshold([6, 0, 0], bg, t));
+    }
+
+    #[test]
+    fn test_process_image_rejects_strict_mode_with_empty_fg() {
+        let temp_dir = tempfile::TempDir::new().unwrap();
+        let input_path = temp_dir.path().join("in.png");
+        let output_path = temp_dir.path().join("out.png");
+
+        let mut img = image::RgbaImage::new(1, 1);
+        img.put_pixel(0, 0, Rgba([0, 0, 0, 255]));
+        image::DynamicImage::ImageRgba8(img)
+            .save(&input_path)
+            .unwrap();
+
+        let err = process_image(
+            &input_path,
+            &output_path,
+            vec![],
+            [0, 0, 0],
+            ProcessOptions {
+                strict_mode: true,
+                ..Default::default()
+            },
+        )
+        .unwrap_err();
+
+        let msg = format!("{:#}", err);
+        assert!(
+            msg.contains("Strict mode requires"),
+            "expected strict-mode error, got: {}",
+            msg
+        );
+        assert!(
+            !output_path.exists(),
+            "no output should be written on validation failure"
+        );
     }
 }

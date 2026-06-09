@@ -84,6 +84,19 @@ struct PathPlan {
     single_output: Option<PathBuf>,
 }
 
+/// Shared per-file processing settings derived once from CLI args and reused
+/// for every input image. Separating this from the per-file positionals
+/// (input/output path) keeps [`process_single_file`] under the clippy
+/// too-many-arguments threshold without an explicit `allow`.
+struct FileProcessing<'a> {
+    foreground_specs: &'a [ForegroundColorSpec],
+    bg_string: Option<&'a str>,
+    strict: bool,
+    fg_threshold: Option<f64>,
+    bg_threshold: Option<f64>,
+    trim: bool,
+}
+
 fn main() -> Result<()> {
     let args = Args::parse();
 
@@ -136,22 +149,21 @@ fn main() -> Result<()> {
         args.out_dir.as_deref(),
     )?;
 
+    let file_processing = FileProcessing {
+        foreground_specs: &foreground_specs,
+        bg_string: args.background_color.as_deref(),
+        strict: args.strict,
+        fg_threshold: args.fg_threshold,
+        bg_threshold: args.bg_threshold,
+        trim: args.trim,
+    };
+
     if plan.inputs.len() == 1 {
         // Single-file mode: keep the original verbose output
-        process_single_file(
-            &plan.inputs[0],
-            &output_paths[0],
-            &foreground_specs,
-            args.background_color.as_deref(),
-            args.strict,
-            args.fg_threshold,
-            args.bg_threshold,
-            args.trim,
-            false,
-        )?;
+        process_single_file(&plan.inputs[0], &output_paths[0], &file_processing, false)?;
     } else {
         // Batch mode: parallel files, quiet per-file output, single batch progress bar
-        run_batch(&plan.inputs, &output_paths, &foreground_specs, &args)?;
+        run_batch(&plan.inputs, &output_paths, &file_processing)?;
     }
 
     Ok(())
@@ -162,8 +174,7 @@ fn main() -> Result<()> {
 fn run_batch(
     inputs: &[PathBuf],
     output_paths: &[PathBuf],
-    foreground_specs: &[ForegroundColorSpec],
-    args: &Args,
+    file_processing: &FileProcessing<'_>,
 ) -> Result<()> {
     debug_assert_eq!(inputs.len(), output_paths.len());
 
@@ -182,17 +193,7 @@ fn run_batch(
         .par_iter()
         .zip(output_paths.par_iter())
         .map(|(input, output)| {
-            let result = process_single_file(
-                input,
-                output,
-                foreground_specs,
-                args.background_color.as_deref(),
-                args.strict,
-                args.fg_threshold,
-                args.bg_threshold,
-                args.trim,
-                true,
-            );
+            let result = process_single_file(input, output, file_processing, true);
             overall.inc(1);
             (input.clone(), result)
         })
@@ -227,25 +228,20 @@ fn run_batch(
     Ok(())
 }
 
-/// Process a single input image with a pre-resolved output path and
-/// pre-parsed foreground color specs. Background detection and unknown-color
+/// Process a single input image with a pre-resolved output path and the
+/// shared per-file processing settings. Background detection and unknown-color
 /// deduction still happen per-file (each image may have a different background
 /// or palette).
-#[allow(clippy::too_many_arguments)]
 fn process_single_file(
     input: &Path,
     output_path: &Path,
-    foreground_specs: &[ForegroundColorSpec],
-    bg_string: Option<&str>,
-    strict: bool,
-    fg_threshold: Option<f64>,
-    bg_threshold: Option<f64>,
-    trim: bool,
+    fp: &FileProcessing<'_>,
     quiet: bool,
 ) -> Result<()> {
-    let background_color = determine_background_color(input, bg_string, quiet)?;
+    let background_color = determine_background_color(input, fp.bg_string, quiet)?;
 
-    let has_unknowns = foreground_specs
+    let has_unknowns = fp
+        .foreground_specs
         .iter()
         .any(|spec| matches!(spec, ForegroundColorSpec::Unknown));
 
@@ -253,15 +249,17 @@ fn process_single_file(
         let img = image::open(input)
             .with_context(|| format!("Failed to open input image: {}", input.display()))?;
 
-        let deduction_threshold = fg_threshold.unwrap_or(unmix::DEFAULT_COLOR_CLOSENESS_THRESHOLD);
+        let deduction_threshold = fp
+            .fg_threshold
+            .unwrap_or(unmix::DEFAULT_COLOR_CLOSENESS_THRESHOLD);
         deduce_unknown_colors(
             &img,
-            foreground_specs,
+            fp.foreground_specs,
             background_color,
             deduction_threshold,
         )?
     } else {
-        foreground_specs
+        fp.foreground_specs
             .iter()
             .map(|spec| match spec {
                 ForegroundColorSpec::Known(color) => Ok(*color),
@@ -276,10 +274,10 @@ fn process_single_file(
         foreground_colors,
         background_color,
         ProcessOptions {
-            strict_mode: strict,
-            fg_threshold,
-            bg_threshold,
-            trim,
+            strict_mode: fp.strict,
+            fg_threshold: fp.fg_threshold,
+            bg_threshold: fp.bg_threshold,
+            trim: fp.trim,
             quiet,
         },
     )?;
