@@ -20,6 +20,7 @@ rayon = "1.10"
 nalgebra = "0.34"
 anyhow = "1.0"
 indicatif = { version = "0.18", features = ["rayon"] }
+glob = "0.3"
 
 [dev-dependencies]
 assert_cmd = "2.0"

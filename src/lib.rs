@@ -26,17 +26,47 @@ pub fn process_image<P: AsRef<Path>>(
     threshold: Option<f64>,
     trim: bool,
 ) -> Result<()> {
+    process_image_with_options(
+        input_path,
+        output_path,
+        foreground_colors,
+        background_color,
+        strict_mode,
+        threshold,
+        trim,
+        false,
+    )
+}
+
+/// Process an image to remove its background, with a `quiet` flag to suppress
+/// progress bars and per-step status output (used in batch mode).
+#[allow(clippy::too_many_arguments)]
+pub fn process_image_with_options<P: AsRef<Path>>(
+    input_path: P,
+    output_path: P,
+    foreground_colors: Vec<Color>,
+    background_color: Color,
+    strict_mode: bool,
+    threshold: Option<f64>,
+    trim: bool,
+    quiet: bool,
+) -> Result<()> {
     let input_path = input_path.as_ref();
     let output_path = output_path.as_ref();
 
     // Loading progress
-    let load_progress = ProgressBar::new_spinner();
-    load_progress.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.green} Loading image...")
-            .expect("Failed to create progress bar style"),
-    );
-    load_progress.enable_steady_tick(std::time::Duration::from_millis(100));
+    let load_progress = if quiet {
+        ProgressBar::hidden()
+    } else {
+        let bar = ProgressBar::new_spinner();
+        bar.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner:.green} Loading image...")
+                .expect("Failed to create progress bar style"),
+        );
+        bar.enable_steady_tick(std::time::Duration::from_millis(100));
+        bar
+    };
 
     // Load image
     let img = image::open(input_path)
@@ -45,12 +75,14 @@ pub fn process_image<P: AsRef<Path>>(
     let rgba = img.to_rgba8();
     let (width, height) = rgba.dimensions();
     load_progress.finish_and_clear();
-    println!(
-        "✓ Loaded {} ({}x{} pixels)",
-        input_path.file_name().unwrap_or_default().to_string_lossy(),
-        width,
-        height
-    );
+    if !quiet {
+        println!(
+            "✓ Loaded {} ({}x{} pixels)",
+            input_path.file_name().unwrap_or_default().to_string_lossy(),
+            width,
+            height
+        );
+    }
 
     // Normalize colors for processing
     let fg_normalized: Vec<NormalizedColor> = foreground_colors
@@ -61,7 +93,11 @@ pub fn process_image<P: AsRef<Path>>(
     let bg_normalized = normalize_color(background_color);
 
     // Setup progress bar
-    let progress = create_progress_bar((width * height) as u64)?;
+    let progress = if quiet {
+        ProgressBar::hidden()
+    } else {
+        create_progress_bar((width * height) as u64)?
+    };
 
     // Process pixels in parallel
     let pixels: Vec<_> = rgba.pixels().collect();
@@ -115,7 +151,11 @@ pub fn process_image<P: AsRef<Path>>(
             .collect()
     };
 
-    progress.finish_with_message(format!("✓ Processed {} pixels", width * height));
+    if quiet {
+        progress.finish_and_clear();
+    } else {
+        progress.finish_with_message(format!("✓ Processed {} pixels", width * height));
+    }
 
     // Create output image
     let mut output_img = ImageBuffer::<Rgba<u8>, Vec<u8>>::new(width, height);
@@ -125,25 +165,32 @@ pub fn process_image<P: AsRef<Path>>(
 
     // Apply trim if requested
     let final_img = if trim {
-        let trim_progress = ProgressBar::new_spinner();
-        trim_progress.set_style(
-            ProgressStyle::default_spinner()
-                .template("{spinner:.green} Trimming image...")
-                .expect("Failed to create progress bar style"),
-        );
-        trim_progress.enable_steady_tick(std::time::Duration::from_millis(100));
+        let trim_progress = if quiet {
+            ProgressBar::hidden()
+        } else {
+            let bar = ProgressBar::new_spinner();
+            bar.set_style(
+                ProgressStyle::default_spinner()
+                    .template("{spinner:.green} Trimming image...")
+                    .expect("Failed to create progress bar style"),
+            );
+            bar.enable_steady_tick(std::time::Duration::from_millis(100));
+            bar
+        };
 
         let trimmed = trim_to_content(&output_img);
         let (new_width, new_height) = trimmed.dimensions();
 
         trim_progress.finish_and_clear();
-        if new_width != width || new_height != height {
-            println!(
-                "✓ Trimmed from {}x{} to {}x{}",
-                width, height, new_width, new_height
-            );
-        } else {
-            println!("✓ No trimming needed (image already tight)");
+        if !quiet {
+            if new_width != width || new_height != height {
+                println!(
+                    "✓ Trimmed from {}x{} to {}x{}",
+                    width, height, new_width, new_height
+                );
+            } else {
+                println!("✓ No trimming needed (image already tight)");
+            }
         }
 
         trimmed
@@ -152,26 +199,33 @@ pub fn process_image<P: AsRef<Path>>(
     };
 
     // Save output image
-    let save_progress = ProgressBar::new_spinner();
-    save_progress.set_style(
-        ProgressStyle::default_spinner()
-            .template("{spinner:.green} Saving image...")
-            .expect("Failed to create progress bar style"),
-    );
-    save_progress.enable_steady_tick(std::time::Duration::from_millis(100));
+    let save_progress = if quiet {
+        ProgressBar::hidden()
+    } else {
+        let bar = ProgressBar::new_spinner();
+        bar.set_style(
+            ProgressStyle::default_spinner()
+                .template("{spinner:.green} Saving image...")
+                .expect("Failed to create progress bar style"),
+        );
+        bar.enable_steady_tick(std::time::Duration::from_millis(100));
+        bar
+    };
 
     final_img
         .save(output_path)
         .with_context(|| format!("Failed to save output image: {}", output_path.display()))?;
 
     save_progress.finish_and_clear();
-    println!(
-        "✓ Saved to {}",
-        output_path
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-    );
+    if !quiet {
+        println!(
+            "✓ Saved to {}",
+            output_path
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+        );
+    }
 
     Ok(())
 }

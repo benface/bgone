@@ -13,6 +13,7 @@ Ultra-fast CLI tool for removing solid background colors from images using color
 - **Flexible modes** - Strict mode for exact color matching, or non-strict mode for more natural transparency
 - **Opacity optimization** - Intelligently optimizes opacity based on mode and colors
 - **Precise color unmixing** - Uses least-squares optimization for accurate color separation
+- **Batch processing** - Process many images at once via globs or multiple paths, with optional output directory
 
 ## Installation
 
@@ -79,6 +80,41 @@ bgone input.png --strict --fg ff0000 auto
 bgone input.png --strict --fg=#f00 --bg=#fff
 ```
 
+### Batch Processing
+
+`bgone` can process multiple images in a single invocation, in parallel. You can pass paths individually, let your shell expand a glob, or quote a glob so `bgone` expands it internally (recommended for predictable behavior and Windows support):
+
+```bash
+# Quoted glob — bgone expands it itself (recommended)
+bgone 'images/*.png'
+
+# Unquoted glob — your shell expands it (Unix only; see safety note below)
+bgone images/*.png
+
+# Explicit list of paths
+bgone a.png b.png c.png
+
+# Send all outputs to a specific directory (created if missing)
+bgone 'images/*.png' --out-dir cleaned/
+bgone a.png b.png c.png --out-dir cleaned/
+
+# Combine with any of the usual options — applied to every file
+bgone 'logos/*.png' --bg fff --trim
+bgone 'sprites/*.png' --fg auto --strict --out-dir transparent/
+```
+
+Each file gets the auto-generated `-bgone` suffix in its own directory (or in `--out-dir` when set). Background detection and foreground color deduction happen independently per file, so a batch of images with different backgrounds will Just Work.
+
+#### Safety note about unquoted globs
+
+When you run `bgone images/*.png` (unquoted), your shell expands the glob before `bgone` sees it. With the standard `bgone INPUT OUTPUT` form preserved for backward compatibility, an unquoted glob that happens to match **exactly two files** would otherwise be interpreted as `INPUT → OUTPUT` and silently overwrite the second image.
+
+To prevent that, `bgone` refuses to overwrite an existing file when called with exactly two positionals. If you hit this, either:
+
+- Quote the glob: `bgone 'images/*.png'` (always treated as inputs)
+- Use `--out-dir`: `bgone images/*.png --out-dir cleaned/`
+- Run files individually if you really do want `bgone input.png new-output.png` to overwrite an existing file (delete it first)
+
 ### Trimming Output
 
 Use `--trim` to automatically crop the output image to the bounding box of non-transparent pixels, removing any fully transparent padding:
@@ -104,18 +140,23 @@ bgone input.png --fg ff0000 0f0 00f --bg fff
 
 ## CLI Options
 
-- `input` - Path to the input image
+- `PATH...` - One or more input image paths
   - Supports many formats: PNG, JPEG, WebP, TIFF, GIF, BMP, ICO, and more
-- `output` - (Optional) Path for the output image
-  - If not specified, automatically generates filename with `-bgone` suffix
-  - Output format is determined by file extension
-  - For formats without alpha support (JPEG, BMP, etc.), automatically converts to PNG
-  - For formats with alpha support (PNG, WebP, TIFF, GIF), preserves the format
+  - Globs (`*`, `?`, `[`) are expanded internally — quote them to bypass shell expansion (e.g., `bgone 'images/*.png'`)
+  - With **exactly two** positional paths and no `--out-dir`, the second is treated as the output for single-file mode (`bgone input.png output.png`). `bgone` will refuse to overwrite an existing file in that slot (use `--out-dir` instead for batch mode)
+  - With **three or more** paths, or whenever `--out-dir` is set, all paths are inputs
+  - When no output path is given for a single file, the output filename is auto-generated with the `-bgone` suffix
+  - Output format is determined by the output file extension; formats without alpha support (JPEG, BMP, etc.) are converted to PNG; formats with alpha support (PNG, WebP, TIFF, GIF) preserve the format
+- `--out-dir PATH` - (Optional) Output directory for batch processing
+  - When set, every positional is treated as an input and outputs are written into this directory with auto-generated `-bgone` filenames
+  - Created automatically if it doesn't exist
+  - When omitted, outputs are written next to each input (same behavior as single-file mode)
 - `-f, --fg COLOR...` - Foreground colors in hex format (e.g., `f00`, `ff0000`, `#ff0000`) or `auto` to deduce unknown colors
   - Optional in non-strict mode
   - Required in strict mode
+  - Applied to every input in batch mode (deduction runs per-file)
 - `-b, --bg COLOR` - Background color in hex format
-  - If not specified, automatically detects the background color
+  - If not specified, automatically detects the background color per input
 - `-s, --strict` - Enable strict mode (requires `--fg` and restricts to specified colors only)
 - `-t, --threshold FLOAT` - Color similarity threshold (`0.0`-`1.0`, default: `0.05`)
   - When using one or multiple `auto` foreground colors: colors within this threshold are considered similar during deduction
