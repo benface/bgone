@@ -130,6 +130,7 @@ fn test_non_strict_optimal_alpha() {
         background,
         false,
         None,
+        None,
         false,
     )
     .unwrap();
@@ -194,6 +195,7 @@ fn test_non_strict_edge_cases() {
         background,
         false,
         None,
+        None,
         false,
     )
     .unwrap();
@@ -233,6 +235,7 @@ fn test_non_strict_edge_cases() {
         vec![],
         background,
         false,
+        None,
         None,
         false,
     )
@@ -290,6 +293,7 @@ fn test_non_strict_alpha_minimization() {
             vec![],
             *background,
             false,
+            None,
             None,
             false,
         )

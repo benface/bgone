@@ -17,13 +17,15 @@ use crate::unmix::{
 use nalgebra::Vector3;
 
 /// Process an image to remove its background
+#[allow(clippy::too_many_arguments)]
 pub fn process_image<P: AsRef<Path>>(
     input_path: P,
     output_path: P,
     foreground_colors: Vec<Color>,
     background_color: Color,
     strict_mode: bool,
-    threshold: Option<f64>,
+    fg_threshold: Option<f64>,
+    bg_threshold: Option<f64>,
     trim: bool,
 ) -> Result<()> {
     process_image_with_options(
@@ -32,7 +34,8 @@ pub fn process_image<P: AsRef<Path>>(
         foreground_colors,
         background_color,
         strict_mode,
-        threshold,
+        fg_threshold,
+        bg_threshold,
         trim,
         false,
     )
@@ -47,7 +50,8 @@ pub fn process_image_with_options<P: AsRef<Path>>(
     foreground_colors: Vec<Color>,
     background_color: Color,
     strict_mode: bool,
-    threshold: Option<f64>,
+    fg_threshold: Option<f64>,
+    bg_threshold: Option<f64>,
     trim: bool,
     quiet: bool,
 ) -> Result<()> {
@@ -101,6 +105,7 @@ pub fn process_image_with_options<P: AsRef<Path>>(
 
     // Process pixels in parallel
     let pixels: Vec<_> = rgba.pixels().collect();
+    let bg_snap_threshold = bg_threshold.unwrap_or(0.0);
     let processed_pixels: Vec<[u8; 4]> = if !strict_mode && foreground_colors.is_empty() {
         // Non-strict mode without foreground colors
         pixels
@@ -109,18 +114,24 @@ pub fn process_image_with_options<P: AsRef<Path>>(
             .map(|pixel| {
                 // Pre-composite translucent pixels over background to get opaque color
                 let observed = composite_pixel_over_background(pixel, background_color);
+                if is_within_bg_threshold(observed, background_color, bg_snap_threshold) {
+                    return [0, 0, 0, 0];
+                }
                 process_pixel_non_strict_no_fg(observed, bg_normalized)
             })
             .collect()
     } else if !strict_mode {
         // Non-strict mode WITH foreground colors
-        let color_threshold = threshold.unwrap_or(DEFAULT_COLOR_CLOSENESS_THRESHOLD);
+        let color_threshold = fg_threshold.unwrap_or(DEFAULT_COLOR_CLOSENESS_THRESHOLD);
         pixels
             .par_iter()
             .progress_with(progress.clone())
             .map(|pixel| {
                 // Pre-composite translucent pixels over background to get opaque color
                 let observed = composite_pixel_over_background(pixel, background_color);
+                if is_within_bg_threshold(observed, background_color, bg_snap_threshold) {
+                    return [0, 0, 0, 0];
+                }
                 process_pixel_non_strict_with_fg(
                     observed,
                     &fg_normalized,
@@ -137,6 +148,9 @@ pub fn process_image_with_options<P: AsRef<Path>>(
             .map(|pixel| {
                 // Pre-composite translucent pixels over background to get opaque color
                 let observed = composite_pixel_over_background(pixel, background_color);
+                if is_within_bg_threshold(observed, background_color, bg_snap_threshold) {
+                    return [0, 0, 0, 0];
+                }
                 let unmix_result = unmix_colors(observed, &fg_normalized, bg_normalized);
                 let (result_color, alpha) = compute_result_color(&unmix_result, &fg_normalized);
 
@@ -296,6 +310,25 @@ fn create_progress_bar(total: u64) -> Result<ProgressBar> {
     );
     progress.set_message("Processing pixels...");
     Ok(progress)
+}
+
+/// Whether an observed (already alpha-composited) pixel color is close enough to
+/// the background to be snapped to fully transparent.
+///
+/// Uses an L∞ (per-channel max) distance metric in normalized [0.0, 1.0] space,
+/// so a `bg_threshold` of `0.004` corresponds to ~1/255 per channel.
+///
+/// With `bg_threshold <= 0.0` this is a no-op (existing exact-match logic in the
+/// pixel processors handles the strict equality case).
+fn is_within_bg_threshold(observed: Color, background: Color, bg_threshold: f64) -> bool {
+    if bg_threshold <= 0.0 {
+        return false;
+    }
+    let dr = observed[0].abs_diff(background[0]);
+    let dg = observed[1].abs_diff(background[1]);
+    let db = observed[2].abs_diff(background[2]);
+    let max_delta = dr.max(dg).max(db) as f64 / 255.0;
+    max_delta <= bg_threshold
 }
 
 /// Composite a pixel over a background color to handle existing alpha channels
@@ -598,5 +631,48 @@ mod tests {
         let result = composite_pixel_over_background(&pixel, background);
         // Approximately 25% of the color
         assert_eq!(result, [50, 25, 13]);
+    }
+
+    #[test]
+    fn test_bg_threshold_zero_is_noop() {
+        let bg = [0, 0, 0];
+        // Even an exact match doesn't snap at threshold 0 (existing exact-match
+        // logic in the pixel processors covers that case).
+        assert!(!is_within_bg_threshold([0, 0, 0], bg, 0.0));
+        assert!(!is_within_bg_threshold([1, 0, 0], bg, 0.0));
+    }
+
+    #[test]
+    fn test_bg_threshold_uses_l_infinity_metric() {
+        let bg = [0, 0, 0];
+        // 1/255 ≈ 0.00392, so threshold 0.004 should snap any single-channel delta of 1
+        let t = 0.004;
+        assert!(is_within_bg_threshold([1, 0, 0], bg, t));
+        assert!(is_within_bg_threshold([0, 1, 0], bg, t));
+        assert!(is_within_bg_threshold([0, 0, 1], bg, t));
+        // And all three channels at delta 1 (L∞ = 1, NOT √3)
+        assert!(is_within_bg_threshold([1, 1, 1], bg, t));
+        // But delta 2 in any channel exceeds the threshold
+        assert!(!is_within_bg_threshold([2, 0, 0], bg, t));
+        assert!(!is_within_bg_threshold([0, 2, 0], bg, t));
+    }
+
+    #[test]
+    fn test_bg_threshold_works_off_black_background() {
+        let bg = [120, 200, 80];
+        // ±1 per channel
+        assert!(is_within_bg_threshold([121, 200, 80], bg, 0.004));
+        assert!(is_within_bg_threshold([119, 201, 79], bg, 0.004));
+        // ±2 per channel exceeds 0.004
+        assert!(!is_within_bg_threshold([122, 200, 80], bg, 0.004));
+    }
+
+    #[test]
+    fn test_bg_threshold_larger_values() {
+        let bg = [0, 0, 0];
+        // 5/255 ≈ 0.0196, threshold 0.02 should snap up to delta 5
+        let t = 0.02;
+        assert!(is_within_bg_threshold([5, 5, 5], bg, t));
+        assert!(!is_within_bg_threshold([6, 0, 0], bg, t));
     }
 }

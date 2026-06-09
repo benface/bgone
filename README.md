@@ -63,7 +63,7 @@ bgone input.png --fg ff0000 auto
 # Using shorthand notation
 bgone input.png -f f00 -b fff
 bgone input.png -f auto -s
-bgone input.png -f f00 0f0 00f -b fff -t 0.1
+bgone input.png -f f00 0f0 00f -b fff --fg-threshold 0.1
 ```
 
 ### Strict Mode
@@ -115,6 +115,27 @@ To prevent that, `bgone` refuses to overwrite an existing file when called with 
 - Use `--out-dir`: `bgone images/*.png --out-dir cleaned/`
 - Run files individually if you really do want `bgone input.png new-output.png` to overwrite an existing file (delete it first)
 
+### Snapping near-background pixels to transparent
+
+By default, only a pixel that exactly matches the background becomes fully transparent. Pixels that are *almost* the background — common with JPEG artifacts, scan noise, or slight anti-aliasing — get a very low (but non-zero) alpha instead, which can leave a faint ghost when the image is composited.
+
+`--bg-threshold` sets a per-channel distance (L∞ in normalized `[0.0, 1.0]` space) within which a pixel is force-snapped to fully transparent *before* unmixing:
+
+```bash
+# Snap anything within ~1/255 per channel of the background
+bgone input.png --bg-threshold 0.004
+
+# More aggressive: ~5/255 per channel
+bgone input.png --bg fff --bg-threshold 0.02
+
+# Useful combined with foreground colors for tight cleanups
+bgone input.png --bg 000 --fg ff0000 --bg-threshold 0.012 --trim
+```
+
+Conversion cheat sheet: `0.004` ≈ 1/255 per channel, `0.012` ≈ 3/255, `0.02` ≈ 5/255. The metric is L∞ (per-channel max delta), so `--bg-threshold 0.004` against `#000000` snaps `#010000`, `#000100`, `#010101` — but not `#020000`.
+
+Be conservative: high values will erase legitimate foreground content that happens to sit near the background (e.g., dark shadows when the background is black). Start small and increase if needed.
+
 ### Trimming Output
 
 Use `--trim` to automatically crop the output image to the bounding box of non-transparent pixels, removing any fully transparent padding:
@@ -158,9 +179,14 @@ bgone input.png --fg ff0000 0f0 00f --bg fff
 - `-b, --bg COLOR` - Background color in hex format
   - If not specified, automatically detects the background color per input
 - `-s, --strict` - Enable strict mode (requires `--fg` and restricts to specified colors only)
-- `-t, --threshold FLOAT` - Color similarity threshold (`0.0`-`1.0`, default: `0.05`)
+- `--fg-threshold FLOAT` - Foreground color similarity threshold (`0.0`-`1.0`, default: `0.05`)
   - When using one or multiple `auto` foreground colors: colors within this threshold are considered similar during deduction
   - When using any `--fg` in non-strict mode: pixels within this threshold of a (known or deduced) foreground color will use that color
+- `--bg-threshold FLOAT` - Background snap threshold (`0.0`-`1.0`, default: `0.0`)
+  - Per-channel max distance (L∞) from the resolved background color
+  - Pixels within this distance are forced to fully transparent before unmixing
+  - `0.004` ≈ 1/255 per channel, `0.02` ≈ 5/255 per channel
+  - Higher values will erase legitimate foreground content that sits near the background
 - `--trim` - Trim the output image by cropping to the bounding box of non-transparent pixels
   - Removes fully transparent padding from all edges
   - Useful for getting tightly-cropped assets after background removal
@@ -238,7 +264,8 @@ bgone intelligently handles existing transparency in input images:
 
 - Use PNG or lossless formats to avoid compression artifacts
 - Manually specify the background color with `--bg` for best accuracy
-- Experiment with `--threshold` for fine-tuning edge detection
+- Experiment with `--fg-threshold` for fine-tuning edge detection
+- Use `--bg-threshold` to clean up JPEG artifacts or near-background noise
 - Use `auto` only for foreground colors that aren't directly visible in the image but can recreate existing colors when blended with the background
 - When using `auto` with gradients or shades, pair it with white or black:
   - `--fg fff auto` for images with mostly light tones

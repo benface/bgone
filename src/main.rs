@@ -44,12 +44,20 @@ struct Args {
     #[arg(short = 's', long = "strict")]
     strict: bool,
 
-    /// Color similarity threshold (0.0-1.0).
+    /// Foreground color similarity threshold (0.0-1.0).
     /// In non-strict mode with --fg: pixels within this threshold of a foreground color will use that color.
     /// In strict mode with 'auto': colors within this threshold are considered similar during deduction.
     /// Default: 0.05 (5%)
-    #[arg(short = 't', long = "threshold", value_name = "FLOAT")]
-    threshold: Option<f64>,
+    #[arg(long = "fg-threshold", value_name = "FLOAT")]
+    fg_threshold: Option<f64>,
+
+    /// Background snap threshold (0.0-1.0).
+    /// Pixels within this per-channel distance (L∞) of the resolved background color
+    /// are forced to fully transparent before unmixing. Useful for cleaning up JPEG
+    /// artifacts or noisy backgrounds. Default: 0.0 (only exact background matches snap).
+    /// Example: 0.004 ≈ 1/255 per channel, 0.02 ≈ 5/255 per channel.
+    #[arg(long = "bg-threshold", value_name = "FLOAT")]
+    bg_threshold: Option<f64>,
 
     /// Trim the output image by cropping to the bounding box of non-transparent pixels.
     #[arg(long = "trim")]
@@ -78,11 +86,16 @@ struct PathPlan {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    // Validate threshold early (before any I/O)
-    if let Some(threshold) = args.threshold
-        && (!(0.0..=1.0).contains(&threshold))
+    // Validate thresholds early (before any I/O)
+    if let Some(t) = args.fg_threshold
+        && (!(0.0..=1.0).contains(&t))
     {
-        anyhow::bail!("Threshold must be between 0.0 and 1.0, got: {}", threshold);
+        anyhow::bail!("--fg-threshold must be between 0.0 and 1.0, got: {}", t);
+    }
+    if let Some(t) = args.bg_threshold
+        && (!(0.0..=1.0).contains(&t))
+    {
+        anyhow::bail!("--bg-threshold must be between 0.0 and 1.0, got: {}", t);
     }
 
     // In strict mode, foreground colors are required
@@ -130,7 +143,8 @@ fn main() -> Result<()> {
             &foreground_specs,
             args.background_color.as_deref(),
             args.strict,
-            args.threshold,
+            args.fg_threshold,
+            args.bg_threshold,
             args.trim,
             false,
         )?;
@@ -173,7 +187,8 @@ fn run_batch(
                 foreground_specs,
                 args.background_color.as_deref(),
                 args.strict,
-                args.threshold,
+                args.fg_threshold,
+                args.bg_threshold,
                 args.trim,
                 true,
             );
@@ -222,7 +237,8 @@ fn process_single_file(
     foreground_specs: &[ForegroundColorSpec],
     bg_string: Option<&str>,
     strict: bool,
-    threshold: Option<f64>,
+    fg_threshold: Option<f64>,
+    bg_threshold: Option<f64>,
     trim: bool,
     quiet: bool,
 ) -> Result<()> {
@@ -236,7 +252,7 @@ fn process_single_file(
         let img = image::open(input)
             .with_context(|| format!("Failed to open input image: {}", input.display()))?;
 
-        let deduction_threshold = threshold.unwrap_or(unmix::DEFAULT_COLOR_CLOSENESS_THRESHOLD);
+        let deduction_threshold = fg_threshold.unwrap_or(unmix::DEFAULT_COLOR_CLOSENESS_THRESHOLD);
         deduce_unknown_colors(
             &img,
             foreground_specs,
@@ -259,7 +275,8 @@ fn process_single_file(
         foreground_colors,
         background_color,
         strict,
-        threshold,
+        fg_threshold,
+        bg_threshold,
         trim,
         quiet,
     )?;

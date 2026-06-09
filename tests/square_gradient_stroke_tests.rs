@@ -248,7 +248,7 @@ fn test_square_gradient_stroke_non_strict_with_fg_high_threshold() {
             "a7b511", // actual stroke color
             "--bg",
             "14191e", // dark background (20, 25, 30)
-            "--threshold",
+            "--fg-threshold",
             "0.5", // 50% threshold instead of default 5%
         ])
         .assert()
