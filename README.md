@@ -117,9 +117,9 @@ To prevent that, `bgone` refuses to overwrite an existing file when called with 
 
 ### Snapping near-background pixels to transparent
 
-By default, only a pixel that exactly matches the background becomes fully transparent. Pixels that are *almost* the background — common with JPEG artifacts, scan noise, or slight anti-aliasing — get a very low (but non-zero) alpha instead, which can leave a faint ghost when the image is composited.
+By default, only a pixel that exactly matches the background becomes fully transparent. Pixels that are _almost_ the background — common with JPEG artifacts, scan noise, or slight anti-aliasing — get a very low (but non-zero) alpha instead, which can leave a faint ghost when the image is composited.
 
-`--bg-threshold` sets a per-channel distance (L∞ in normalized `[0.0, 1.0]` space) within which a pixel is force-snapped to fully transparent *before* unmixing:
+`--bg-threshold` sets a per-channel distance (L∞ in normalized `[0.0, 1.0]` space) within which a pixel is force-snapped to fully transparent _before_ unmixing:
 
 ```bash
 # Snap anything within ~1/255 per channel of the background
